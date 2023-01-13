@@ -56,39 +56,39 @@ type QemuConfig struct {
 	Vmgenid string `json:"vmgenid,omitempty"`
 }
 
-func Create(clusterApiConfig common.ApiConfig, qemuConfig QemuConfig) error {
+func Create(apiConfig common.ApiConfig, qemuConfig QemuConfig) error {
 	apiPath := fmt.Sprintf("/nodes/%s/qemu", qemuConfig.Node)
-	err := common.PostReq(clusterApiConfig, apiPath, qemuConfig)
+	err := common.PostReq(apiConfig, apiPath, qemuConfig)
 
 	return err
 }
 
-func SetConfig(clusterApiConfig common.ApiConfig, node string, vmId int, qemuConfig QemuConfig) error {
+func SetConfig(apiConfig common.ApiConfig, node string, vmId int, qemuConfig QemuConfig) error {
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/config", node, vmId)
-	err := common.PostReq(clusterApiConfig, apiPath, qemuConfig)
+	err := common.PostReq(apiConfig, apiPath, qemuConfig)
 
 	return err
 }
 
-func Delete(clusterApiConfig common.ApiConfig, node string, vmId int) error {
+func Delete(apiConfig common.ApiConfig, node string, vmId int) error {
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d", node, vmId)
-	err := common.DeleteReq(clusterApiConfig, apiPath)
+	err := common.DeleteReq(apiConfig, apiPath)
 
 	return err
 }
 
-func Start(clusterApiConfig common.ApiConfig, node string, vmId int) error {
+func Start(apiConfig common.ApiConfig, node string, vmId int) error {
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, node, vmId)
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/start", node, vmId)
-	err := common.PostReq(clusterApiConfig, apiPath, data)
+	err := common.PostReq(apiConfig, apiPath, data)
 
 	return err
 }
 
-func Stop(clusterApiConfig common.ApiConfig, node string, vmId int) error {
+func Stop(apiConfig common.ApiConfig, node string, vmId int) error {
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, node, vmId)
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/stop", node, vmId)
-	err := common.PostReq(clusterApiConfig, apiPath, data)
+	err := common.PostReq(apiConfig, apiPath, data)
 
 	return err
 }
