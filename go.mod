@@ -3,7 +3,6 @@ module github.com/CRASH-Tech/proxmox-operator
 go 1.18
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/sirupsen/logrus v1.9.0
 	gopkg.in/yaml.v2 v2.4.0
