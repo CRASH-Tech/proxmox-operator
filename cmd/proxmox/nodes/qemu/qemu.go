@@ -63,6 +63,13 @@ func Create(clusterApiConfig common.ApiConfig, qemuConfig QemuConfig) error {
 	return err
 }
 
+func SetConfig(clusterApiConfig common.ApiConfig, node string, vmId int, qemuConfig QemuConfig) error {
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/config", node, vmId)
+	err := common.PostReq(clusterApiConfig, apiPath, qemuConfig)
+
+	return err
+}
+
 func Delete(clusterApiConfig common.ApiConfig, node string, vmId int) error {
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d", node, vmId)
 	err := common.DeleteReq(clusterApiConfig, apiPath)
