@@ -12,11 +12,17 @@ type ApiConfig struct {
 	ApiTokenSecret string `yaml:"api_token_secret"`
 }
 
-func PostReq(clusterApiConfig ApiConfig, apiPath string, data interface{}) error {
+func getClient(clusterApiConfig ApiConfig) *resty.Client {
 	client := resty.New()
+	client.SetHeader("Content-Type", "application/json")
+	client.SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", clusterApiConfig.ApiTokenId, clusterApiConfig.ApiTokenSecret))
+
+	return client
+}
+
+func PostReq(clusterApiConfig ApiConfig, apiPath string, data interface{}) error {
+	client := getClient(clusterApiConfig)
 	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", clusterApiConfig.ApiTokenId, clusterApiConfig.ApiTokenSecret)).
 		SetBody(data).
 		Post(fmt.Sprintf("%s/%s", clusterApiConfig.ApiUrl, apiPath))
 
@@ -28,10 +34,8 @@ func PostReq(clusterApiConfig ApiConfig, apiPath string, data interface{}) error
 }
 
 func DeleteReq(clusterApiConfig ApiConfig, apiPath string) error {
-	client := resty.New()
+	client := getClient(clusterApiConfig)
 	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", clusterApiConfig.ApiTokenId, clusterApiConfig.ApiTokenSecret)).
 		Delete(fmt.Sprintf("%s/%s", clusterApiConfig.ApiUrl, apiPath))
 
 	if resp.IsError() {

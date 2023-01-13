@@ -33,7 +33,7 @@ func main() {
 
 	TestCreateVM(client)
 	//TestDeleteVM(client)
-	//TestStartVM(client)
+	TestStartVM(client)
 	//TestStopVM(client)
 }
 
