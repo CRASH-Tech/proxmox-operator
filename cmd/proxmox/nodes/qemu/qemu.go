@@ -1,9 +1,9 @@
 package qemu
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -30,7 +30,7 @@ import (
 // "cores":8,
 // "tablet":1,
 // "vmgenid":"10e77c08-c74f-466e-9186-eb5f8da4079c"}}
-type QemuVMConfigImpl struct {
+type QemuConfig struct {
 	VMId    int    `json:"vmid,omitempty"`
 	Node    string `json:"node,omitempty"`
 	Ostype  string `json:"ostype,omitempty"`
@@ -57,48 +57,17 @@ type QemuVMConfigImpl struct {
 	Vmgenid string `json:"vmgenid,omitempty"`
 }
 
-//  root@pam!test
-//  4f718e55-d6a4-4840-a548-193a6c84fece
-//curl -H "Authorization: PVEAPIToken=root@pam!test=4f718e55-d6a4-4840-a548-193a6c84fece" https://10.0.0.1:8006/api2/json/
-func Create() {
-	PROXMOX_API_URL := "https://crash-lab.uis.st/api2/json/nodes/crash-lab/qemu"
-	PROXMOX_API_TOKEN_ID := "root@pam!test"
-	PROXMOX_API_TOKEN_SECRET := "4f718e55-d6a4-4840-a548-193a6c84fece"
-
-	qemuConfig := QemuVMConfigImpl{
-		VMId:    222,
-		Node:    "crash-lab",
-		Ostype:  "l26",
-		Bios:    "seabios",
-		Onboot:  0,
-		Smbios1: "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1",
-		Scsi0:   "local-lvm:vm-107-disk-0,size=32G",
-		Sockets: 1,
-		Scsihw:  "virtio-scsi-pci",
-		Boot:    "order=net0;ide2;scsi0",
-		CPU:     "host",
-		Ide2:    "none,media=cdrom",
-		Kvm:     1,
-		Name:    "k-test-c-3",
-		Hotplug: "network,disk,usb",
-		Agent:   "0",
-		Numa:    1,
-		Memory:  8192,
-		Net0:    "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103",
-		Cores:   8,
-		Tablet:  1,
-	}
+func Create(clusterApiConfig common.ApiConfig, qemuConfig QemuConfig) {
+	apiPath := fmt.Sprintf("/nodes/%s/qemu", qemuConfig.Node)
 
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", PROXMOX_API_TOKEN_ID, PROXMOX_API_TOKEN_SECRET)).
+		SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", clusterApiConfig.ApiTokenId, clusterApiConfig.ApiTokenSecret)).
 		SetBody(qemuConfig).
 		//		SetResult(&AuthSuccess{}). // or SetResult(AuthSuccess{}).
-		Post(PROXMOX_API_URL)
+		Post(fmt.Sprintf("%s/%s", clusterApiConfig.ApiUrl, apiPath))
+
 	fmt.Println(resp)
 	fmt.Println(err)
-
-	data, _ := json.Marshal(qemuConfig)
-	fmt.Printf(string(data))
 }

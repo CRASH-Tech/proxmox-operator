@@ -1,0 +1,5 @@
+clusters:
+  crash-lab:
+    api_url: https://crash-lab.uis.st/api2/json
+    api_token_id: root@pam!test
+    api_token_secret: 4f718e55-d6a4-4840-a548-193a6c84fece
