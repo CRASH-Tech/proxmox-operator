@@ -2,13 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
-	"log"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/nodes/qemu"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -29,10 +28,13 @@ func init() {
 }
 
 func main() {
-	fmt.Printf("Starting proxmox-operator %s\n", version)
+	log.Infof("Starting proxmox-operator %s\n", version)
 	client := proxmox.NewClient(config.Clusters)
 
 	TestCreateVM(client)
+	//TestDeleteVM(client)
+	//TestStartVM(client)
+	//TestStopVM(client)
 }
 
 func getConfig(path string) (result Config) {
@@ -53,7 +55,7 @@ func TestCreateVM(client *proxmox.Client) {
 	qemuConfig := qemu.QemuConfig{
 		VMId:    222,
 		Node:    "crash-lab",
-		Ostype:  "l26",
+		OsType:  "l26",
 		Bios:    "seabios",
 		Onboot:  0,
 		Smbios1: "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1",
@@ -74,4 +76,16 @@ func TestCreateVM(client *proxmox.Client) {
 		Tablet:  1,
 	}
 	client.QemuCreate("crash-lab", qemuConfig)
+}
+
+func TestDeleteVM(client *proxmox.Client) {
+	client.QemuDelete("crash-lab", "crash-lab", 222)
+}
+
+func TestStartVM(client *proxmox.Client) {
+	client.QemuStart("crash-lab", "crash-lab", 222)
+}
+
+func TestStopVM(client *proxmox.Client) {
+	client.QemuStop("crash-lab", "crash-lab", 222)
 }

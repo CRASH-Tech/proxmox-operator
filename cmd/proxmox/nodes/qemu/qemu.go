@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
-	"github.com/go-resty/resty/v2"
 )
 
 // {"data":
@@ -33,7 +32,7 @@ import (
 type QemuConfig struct {
 	VMId    int    `json:"vmid,omitempty"`
 	Node    string `json:"node,omitempty"`
-	Ostype  string `json:"ostype,omitempty"`
+	OsType  string `json:"ostype,omitempty"`
 	Bios    string `json:"bios,omitempty"`
 	Digest  string `json:"digest,omitempty"`
 	Onboot  int    `json:"onboot,omitempty"`
@@ -57,17 +56,32 @@ type QemuConfig struct {
 	Vmgenid string `json:"vmgenid,omitempty"`
 }
 
-func Create(clusterApiConfig common.ApiConfig, qemuConfig QemuConfig) {
+func Create(clusterApiConfig common.ApiConfig, qemuConfig QemuConfig) error {
 	apiPath := fmt.Sprintf("/nodes/%s/qemu", qemuConfig.Node)
+	err := common.PostReq(clusterApiConfig, apiPath, qemuConfig)
 
-	client := resty.New()
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", clusterApiConfig.ApiTokenId, clusterApiConfig.ApiTokenSecret)).
-		SetBody(qemuConfig).
-		//		SetResult(&AuthSuccess{}). // or SetResult(AuthSuccess{}).
-		Post(fmt.Sprintf("%s/%s", clusterApiConfig.ApiUrl, apiPath))
+	return err
+}
 
-	fmt.Println(resp)
-	fmt.Println(err)
+func Delete(clusterApiConfig common.ApiConfig, node string, vmId int) error {
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d", node, vmId)
+	err := common.DeleteReq(clusterApiConfig, apiPath)
+
+	return err
+}
+
+func Start(clusterApiConfig common.ApiConfig, node string, vmId int) error {
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, node, vmId)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/start", node, vmId)
+	err := common.PostReq(clusterApiConfig, apiPath, data)
+
+	return err
+}
+
+func Stop(clusterApiConfig common.ApiConfig, node string, vmId int) error {
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, node, vmId)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/stop", node, vmId)
+	err := common.PostReq(clusterApiConfig, apiPath, data)
+
+	return err
 }
