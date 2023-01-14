@@ -58,7 +58,6 @@ func TestCreateVM(client *proxmox.Client) {
 	qemuConfig["vmid"] = 222
 	qemuConfig["node"] = "crash-lab"
 	qemuConfig["name"] = "k-test-c-33"
-	qemuConfig["node"] = "crash-lab"
 	qemuConfig["ostype"] = "l26"
 	qemuConfig["bios"] = "seabios"
 	qemuConfig["onboot"] = 0

@@ -18,7 +18,7 @@ func NewClient(clusters map[string]common.ApiConfig) *Client {
 	return &client
 }
 
-func (client *Client) getClusterApiConfig(clusterName string) (common.ApiConfig, error) {
+func (client *Client) getApiConfig(clusterName string) (common.ApiConfig, error) {
 	clusterApiConfig, isExists := client.Clusters[clusterName]
 	if !isExists {
 		return clusterApiConfig, fmt.Errorf("unknown cluster: %s", clusterName)
