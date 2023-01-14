@@ -31,7 +31,7 @@ func (client *Client) QemuCreate(cluster string, qemuConfig qemu.QemuConfig) {
 		return
 	}
 
-	log.Infof("Creating qemu VM: %s: %+v", cluster, qemuConfig)
+	log.Infof("Creating qemu VM, cluster: %s config: %+v", cluster, qemuConfig)
 	err = qemu.Create(apiConfig, qemuConfig)
 	if err != nil {
 		log.Error(err)
@@ -53,13 +53,28 @@ func (client *Client) QemuSetConfig(cluster string, qemuConfig qemu.QemuConfig) 
 		return
 	}
 
-	log.Infof("Set qemu VM config: %s: %+v", cluster, qemuConfig)
+	log.Infof("Set qemu VM config, cluster: %s config: %+v", cluster, qemuConfig)
 	err = qemu.SetConfig(apiConfig, qemuConfig)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 
+}
+
+func (client *Client) QemuGetConfig(cluster, node string, vmId int) (qemu.QemuConfig, error) {
+	apiConfig, err := client.getApiConfig(cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Infof("Get qemu VM config, cluster: %s node: %s vmid: %d", cluster, node, vmId)
+	qemuConfig, err := qemu.GetConfig(apiConfig, node, vmId)
+	if err != nil {
+		return nil, err
+	}
+
+	return qemuConfig, err
 }
 
 func (client *Client) QemuDelete(cluster, node string, vmId int) {
@@ -69,7 +84,7 @@ func (client *Client) QemuDelete(cluster, node string, vmId int) {
 		return
 	}
 
-	log.Infof("Deleting qemu VM: cluster: %s node: %s vmid: %d", cluster, node, vmId)
+	log.Infof("Deleting qemu VM, cluster: %s node: %s vmid: %d", cluster, node, vmId)
 	err = qemu.Delete(apiConfig, node, vmId)
 	if err != nil {
 		log.Error(err)
@@ -85,7 +100,7 @@ func (client *Client) QemuStart(cluster, node string, vmId int) {
 		return
 	}
 
-	log.Infof("Starting qemu VM: cluster: %s node: %s vmid: %d", cluster, node, vmId)
+	log.Infof("Starting qemu VM, cluster: %s node: %s vmid: %d", cluster, node, vmId)
 	err = qemu.Start(apiConfig, node, vmId)
 	if err != nil {
 		log.Error(err)
@@ -101,7 +116,7 @@ func (client *Client) QemuStop(cluster, node string, vmId int) {
 		return
 	}
 
-	log.Infof("Starting qemu VM: cluster: %s node: %s vmid: %d", cluster, node, vmId)
+	log.Infof("Starting qemu VM, cluster: %s node: %s vmid: %d", cluster, node, vmId)
 	err = qemu.Stop(apiConfig, node, vmId)
 	if err != nil {
 		log.Error(err)

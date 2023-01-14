@@ -37,7 +37,8 @@ func main() {
 	//TestStartVM(client)
 	//TestStopVM(client)
 	//TestDeleteVM(client)
-	TestGetNodes(client)
+	//TestGetNodes(client)
+	TestGetQemuConfig(client)
 }
 
 func getConfig(path string) (result Config) {
@@ -142,4 +143,13 @@ func TestGetNextId(client *proxmox.Client) {
 		return
 	}
 	fmt.Println(nextId)
+}
+
+func TestGetQemuConfig(client *proxmox.Client) {
+	qemuConfig, err := client.QemuGetConfig("crash-lab", "crash-lab", 222)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	fmt.Println(qemuConfig)
 }

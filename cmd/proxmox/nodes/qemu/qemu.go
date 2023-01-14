@@ -1,6 +1,7 @@
 package qemu
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
@@ -22,6 +23,23 @@ func SetConfig(apiConfig common.ApiConfig, qemuConfig QemuConfig) error {
 	err := common.PostReq(apiConfig, apiPath, qemuConfig)
 
 	return err
+}
+
+func GetConfig(apiConfig common.ApiConfig, node string, vmId int) (QemuConfig, error) {
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/config", node, vmId)
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, node, vmId)
+	qemuConfigData, err := common.GetReq(apiConfig, apiPath, data)
+	if err != nil {
+		return nil, err
+	}
+
+	qemuConfig := QemuConfig{}
+	err = json.Unmarshal(qemuConfigData, &qemuConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return qemuConfig, err
 }
 
 func Delete(apiConfig common.ApiConfig, node string, vmId int) error {
