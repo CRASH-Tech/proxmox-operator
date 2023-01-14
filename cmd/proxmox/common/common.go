@@ -20,6 +20,19 @@ func getClient(clusterApiConfig ApiConfig) *resty.Client {
 	return client
 }
 
+func GetReq(clusterApiConfig ApiConfig, apiPath string, data interface{}) ([]byte, error) {
+	client := getClient(clusterApiConfig)
+	resp, err := client.R().
+		SetBody(data).
+		Get(fmt.Sprintf("%s/%s", clusterApiConfig.ApiUrl, apiPath))
+
+	if resp.IsError() {
+		return nil, fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
+	}
+
+	return resp.Body(), err
+}
+
 func PostReq(clusterApiConfig ApiConfig, apiPath string, data interface{}) error {
 	client := getClient(clusterApiConfig)
 	resp, err := client.R().

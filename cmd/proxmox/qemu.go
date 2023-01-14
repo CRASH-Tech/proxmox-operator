@@ -23,9 +23,9 @@ func (client *Client) QemuCreate(cluster string, qemuConfig qemu.QemuConfig) {
 		log.Error(err)
 		return
 	}
-	if clusterApiConfig, err := client.getApiConfig(cluster); err == nil {
+	if apiConfig, err := client.getApiConfig(cluster); err == nil {
 		log.Infof("Creating qemu VM: %s: %+v", cluster, qemuConfig)
-		if err := qemu.Create(clusterApiConfig, qemuConfig); err != nil {
+		if err := qemu.Create(apiConfig, qemuConfig); err != nil {
 			log.Error(err)
 		}
 	} else {
@@ -38,9 +38,9 @@ func (client *Client) QemuSetConfig(cluster string, qemuConfig qemu.QemuConfig) 
 		log.Error(err)
 		return
 	}
-	if clusterApiConfig, err := client.getApiConfig(cluster); err == nil {
+	if apiConfig, err := client.getApiConfig(cluster); err == nil {
 		log.Infof("Set qemu VM config: %s: %+v", cluster, qemuConfig)
-		if err := qemu.SetConfig(clusterApiConfig, qemuConfig); err != nil {
+		if err := qemu.SetConfig(apiConfig, qemuConfig); err != nil {
 			log.Error(err)
 		}
 	} else {
@@ -49,9 +49,9 @@ func (client *Client) QemuSetConfig(cluster string, qemuConfig qemu.QemuConfig) 
 }
 
 func (client *Client) QemuDelete(cluster, node string, vmId int) {
-	if clusterApiConfig, err := client.getApiConfig(cluster); err == nil {
+	if apiConfig, err := client.getApiConfig(cluster); err == nil {
 		log.Infof("Deleting qemu VM: cluster: %s node: %s vmid: %d", cluster, node, vmId)
-		if err := qemu.Delete(clusterApiConfig, node, vmId); err != nil {
+		if err := qemu.Delete(apiConfig, node, vmId); err != nil {
 			log.Error(err)
 		}
 	} else {
@@ -60,9 +60,9 @@ func (client *Client) QemuDelete(cluster, node string, vmId int) {
 }
 
 func (client *Client) QemuStart(cluster, node string, vmId int) {
-	if clusterApiConfig, err := client.getApiConfig(cluster); err == nil {
+	if apiConfig, err := client.getApiConfig(cluster); err == nil {
 		log.Infof("Starting qemu VM: cluster: %s node: %s vmid: %d", cluster, node, vmId)
-		if err := qemu.Start(clusterApiConfig, node, vmId); err != nil {
+		if err := qemu.Start(apiConfig, node, vmId); err != nil {
 			log.Error(err)
 		}
 	} else {
@@ -71,9 +71,9 @@ func (client *Client) QemuStart(cluster, node string, vmId int) {
 }
 
 func (client *Client) QemuStop(cluster, node string, vmId int) {
-	if clusterApiConfig, err := client.getApiConfig(cluster); err == nil {
+	if apiConfig, err := client.getApiConfig(cluster); err == nil {
 		log.Infof("Starting qemu VM: cluster: %s node: %s vmid: %d", cluster, node, vmId)
-		if err := qemu.Stop(clusterApiConfig, node, vmId); err != nil {
+		if err := qemu.Stop(apiConfig, node, vmId); err != nil {
 			log.Error(err)
 		}
 	} else {

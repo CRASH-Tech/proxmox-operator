@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
@@ -31,11 +32,12 @@ func main() {
 	log.Infof("Starting proxmox-operator %s\n", version)
 	client := proxmox.NewClient(config.Clusters)
 
-	TestCreateVM(client)
+	//TestCreateVM(client)
 	//TestSetVMConfig(client)
 	//TestStartVM(client)
 	//TestStopVM(client)
 	//TestDeleteVM(client)
+	TestGetNodes(client)
 }
 
 func getConfig(path string) (result Config) {
@@ -119,4 +121,9 @@ func TestStartVM(client *proxmox.Client) {
 
 func TestStopVM(client *proxmox.Client) {
 	client.QemuStop("crash-lab", "crash-lab", 222)
+}
+
+func TestGetNodes(client *proxmox.Client) {
+	data, err := client.NodesGet("crash-lab")
+	fmt.Println(data, err)
 }
