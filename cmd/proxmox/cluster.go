@@ -20,14 +20,14 @@ func (client *Client) ClusterGetNextId(c string) (int, error) {
 	return nextId, err
 }
 
-func (client *Client) ClusterGetResources(c string) ([]cluster.Resource, error) {
+func (client *Client) ClusterGetResources(c, resourceType string) ([]cluster.Resource, error) {
 	apiConfig, err := client.getApiConfig(c)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Infof("Get cluster resources, cluster: %s", c)
-	resources, err := cluster.GetResources(apiConfig)
+	log.Infof("Get cluster resources, cluster: %s type: %s", c, resourceType)
+	resources, err := cluster.GetResources(apiConfig, resourceType)
 	if err != nil {
 		return nil, err
 	}

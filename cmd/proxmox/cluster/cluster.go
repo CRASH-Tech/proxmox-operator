@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
@@ -14,6 +15,16 @@ type NextIdResp struct {
 type ResourcesResp struct {
 	Data []Resource `json:"data"`
 }
+
+const (
+	ResourceQemu    = "qemu"
+	ResourceLXC     = "lxc"
+	ResourceOpenVZ  = "openvz"
+	ResourceStorage = "storage"
+	ResourceNode    = "node"
+	ResourceSDN     = "sdn"
+	ResourcePool    = "pool"
+)
 
 type Resource struct {
 	Maxdisk    int64   `json:"maxdisk"`
@@ -63,10 +74,11 @@ func GetNextId(apiConfig common.ApiConfig) (int, error) {
 	return nextId, err
 }
 
-func GetResources(apiConfig common.ApiConfig) ([]Resource, error) {
+func GetResources(apiConfig common.ApiConfig, resourceType string) ([]Resource, error) {
 	apiPath := "/cluster/resources"
 
-	data, err := common.GetReq(apiConfig, apiPath, nil)
+	reqData := fmt.Sprintf(`{"type":"%s"}`, resourceType)
+	data, err := common.GetReq(apiConfig, apiPath, reqData)
 	if err != nil {
 		return nil, err
 	}

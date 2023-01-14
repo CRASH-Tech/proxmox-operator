@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
+	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/cluster"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/nodes/qemu"
 	log "github.com/sirupsen/logrus"
@@ -176,7 +177,7 @@ func TestGetQemuConfig(client *proxmox.Client) {
 }
 
 func TestGetClusterResources(client *proxmox.Client) {
-	resources, err := client.ClusterGetResources("crash-lab")
+	resources, err := client.ClusterGetResources("crash-lab", cluster.ResourceLXC)
 	if err != nil {
 		log.Error(err)
 		return
