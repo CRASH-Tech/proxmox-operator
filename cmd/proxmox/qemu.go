@@ -16,10 +16,10 @@ func (client *Client) QemuCreate(cluster string, qemuConfig qemu.QemuConfig) {
 	}
 }
 
-func (client *Client) QemuSetConfig(cluster string, node string, vmId int, qemuConfig qemu.QemuConfig) {
+func (client *Client) QemuSetConfig(cluster string, qemuConfig qemu.QemuConfig) {
 	if clusterApiConfig, err := client.getClusterApiConfig(cluster); err == nil {
 		log.Infof("Set qemu VM config: %s: %+v", cluster, qemuConfig)
-		if err := qemu.SetConfig(clusterApiConfig, node, vmId, qemuConfig); err != nil {
+		if err := qemu.SetConfig(clusterApiConfig, qemuConfig); err != nil {
 			log.Error(err)
 		}
 	} else {

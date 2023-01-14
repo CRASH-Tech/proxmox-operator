@@ -31,11 +31,11 @@ func main() {
 	log.Infof("Starting proxmox-operator %s\n", version)
 	client := proxmox.NewClient(config.Clusters)
 
-	//TestCreateVM(client)
-	TestSetVMConfig(client)
-	//TestDeleteVM(client)
+	TestCreateVM(client)
+	//TestSetVMConfig(client)
 	//TestStartVM(client)
 	//TestStopVM(client)
+	//TestDeleteVM(client)
 }
 
 func getConfig(path string) (result Config) {
@@ -53,57 +53,61 @@ func getConfig(path string) (result Config) {
 }
 
 func TestCreateVM(client *proxmox.Client) {
-	qemuConfig := qemu.QemuConfig{
-		VMId:    222,
-		Node:    "crash-lab",
-		OsType:  "l26",
-		Bios:    "seabios",
-		Onboot:  0,
-		Smbios1: "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1",
-		Scsi0:   "local-lvm:vm-107-disk-0,size=32G",
-		Sockets: 1,
-		Scsihw:  "virtio-scsi-pci",
-		Boot:    "order=net0;ide2;scsi0",
-		CPU:     "host",
-		Ide2:    "none,media=cdrom",
-		Kvm:     1,
-		Name:    "k-test-c-33",
-		Hotplug: "network,disk,usb",
-		Agent:   "0",
-		Numa:    1,
-		Memory:  8192,
-		Net0:    "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103",
-		Cores:   8,
-		Tablet:  1,
-	}
+	qemuConfig := qemu.QemuConfig{}
+
+	qemuConfig["vmid"] = 222
+	qemuConfig["node"] = "crash-lab"
+	qemuConfig["name"] = "k-test-c-33"
+	qemuConfig["node"] = "crash-lab"
+	qemuConfig["ostype"] = "l26"
+	qemuConfig["bios"] = "seabios"
+	qemuConfig["onboot"] = 0
+	qemuConfig["smbios1"] = "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1"
+	qemuConfig["scsi0"] = "local-lvm:vm-107-disk-0,size=32G"
+	qemuConfig["sockets"] = 1
+	qemuConfig["scsihw"] = "virtio-scsi-pci"
+	qemuConfig["boot"] = "order=net0;ide2;scsi0"
+	qemuConfig["cpu"] = "host"
+	qemuConfig["ide2"] = "none,media=cdrom"
+	qemuConfig["kvm"] = 1
+	qemuConfig["hotplug"] = "network,disk,usb"
+	qemuConfig["agent"] = "0"
+	qemuConfig["numa"] = 1
+	qemuConfig["memory"] = 8192
+	qemuConfig["net0"] = "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103"
+	qemuConfig["cores"] = 8
+	qemuConfig["tablet"] = 1
+
 	client.QemuCreate("crash-lab", qemuConfig)
 }
 
 func TestSetVMConfig(client *proxmox.Client) {
-	qemuConfig := qemu.QemuConfig{
-		VMId:    222,
-		Node:    "crash-lab",
-		OsType:  "l26",
-		Bios:    "seabios",
-		Onboot:  0,
-		Smbios1: "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1",
-		Scsi0:   "local-lvm:vm-107-disk-0,size=32G",
-		Sockets: 1,
-		Scsihw:  "virtio-scsi-pci",
-		Boot:    "order=net0;ide2;scsi0",
-		CPU:     "host",
-		Ide2:    "none,media=cdrom",
-		Kvm:     1,
-		Name:    "k-test-c-33",
-		Hotplug: "network,disk,usb",
-		Agent:   "0",
-		Numa:    1,
-		Memory:  8192,
-		Net0:    "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103",
-		Cores:   8,
-		Tablet:  1,
-	}
-	client.QemuSetConfig("crash-lab", "crash-lab", 222, qemuConfig)
+	qemuConfig := qemu.QemuConfig{}
+
+	qemuConfig["vmid"] = 222
+	qemuConfig["node"] = "crash-lab"
+	qemuConfig["name"] = "k-test-c-44"
+	qemuConfig["node"] = "crash-lab"
+	qemuConfig["ostype"] = "l26"
+	qemuConfig["bios"] = "seabios"
+	qemuConfig["onboot"] = 0
+	qemuConfig["smbios1"] = "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1"
+	qemuConfig["scsi0"] = "local-lvm:vm-107-disk-0,size=32G"
+	qemuConfig["sockets"] = 1
+	qemuConfig["scsihw"] = "virtio-scsi-pci"
+	qemuConfig["boot"] = "order=net0;ide2;scsi0"
+	qemuConfig["cpu"] = "host"
+	qemuConfig["ide2"] = "none,media=cdrom"
+	qemuConfig["kvm"] = 1
+	qemuConfig["hotplug"] = "network,disk,usb"
+	qemuConfig["agent"] = "0"
+	qemuConfig["numa"] = 1
+	qemuConfig["memory"] = 8192
+	qemuConfig["net0"] = "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103"
+	qemuConfig["cores"] = 8
+	qemuConfig["tablet"] = 1
+
+	client.QemuSetConfig("crash-lab", qemuConfig)
 }
 
 func TestDeleteVM(client *proxmox.Client) {
