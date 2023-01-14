@@ -94,7 +94,7 @@ func TestSetVMConfig(client *proxmox.Client) {
 	qemuConfig["bios"] = "seabios"
 	qemuConfig["onboot"] = 0
 	qemuConfig["smbios1"] = "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1"
-	qemuConfig["scsi0"] = "local-lvm:vm-107-disk-0,size=32G"
+	qemuConfig["scsi0"] = "local-lvm:vm-107-disk-0,size=64G"
 	qemuConfig["sockets"] = 1
 	qemuConfig["scsihw"] = "virtio-scsi-pci"
 	qemuConfig["boot"] = "order=net0;ide2;scsi0"
@@ -106,7 +106,7 @@ func TestSetVMConfig(client *proxmox.Client) {
 	qemuConfig["numa"] = 1
 	qemuConfig["memory"] = 8192
 	qemuConfig["net0"] = "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103"
-	qemuConfig["cores"] = 8
+	qemuConfig["cores"] = 10
 	qemuConfig["tablet"] = 1
 
 	client.QemuSetConfig("crash-lab", qemuConfig)
