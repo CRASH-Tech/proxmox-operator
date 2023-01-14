@@ -39,7 +39,7 @@ func GetConfig(apiConfig common.ApiConfig, node string, vmId int) (QemuConfig, e
 		return nil, err
 	}
 
-	return qemuConfig, err
+	return qemuConfig, nil
 }
 
 func Delete(apiConfig common.ApiConfig, node string, vmId int) error {

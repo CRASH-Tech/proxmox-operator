@@ -80,7 +80,11 @@ func TestCreateVM(client *proxmox.Client) {
 	qemuConfig["cores"] = 8
 	qemuConfig["tablet"] = 1
 
-	client.QemuCreate("crash-lab", qemuConfig)
+	err := client.QemuCreate("crash-lab", qemuConfig)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 }
 
 func TestSetVMConfig(client *proxmox.Client) {
@@ -109,19 +113,35 @@ func TestSetVMConfig(client *proxmox.Client) {
 	qemuConfig["cores"] = 10
 	qemuConfig["tablet"] = 1
 
-	client.QemuSetConfig("crash-lab", qemuConfig)
+	err := client.QemuSetConfig("crash-lab", qemuConfig)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 }
 
 func TestDeleteVM(client *proxmox.Client) {
-	client.QemuDelete("crash-lab", "crash-lab", 222)
+	err := client.QemuDelete("crash-lab", "crash-lab", 222)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 }
 
 func TestStartVM(client *proxmox.Client) {
-	client.QemuStart("crash-lab", "crash-lab", 222)
+	err := client.QemuStart("crash-lab", "crash-lab", 222)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 }
 
 func TestStopVM(client *proxmox.Client) {
-	client.QemuStop("crash-lab", "crash-lab", 222)
+	err := client.QemuStop("crash-lab", "crash-lab", 222)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 }
 
 func TestGetNodes(client *proxmox.Client) {

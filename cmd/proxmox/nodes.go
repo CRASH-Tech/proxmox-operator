@@ -17,5 +17,5 @@ func (client *Client) NodesGet(cluster string) ([]nodes.Node, error) {
 		return nil, err
 	}
 
-	return nodes, err
+	return nodes, nil
 }

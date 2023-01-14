@@ -25,12 +25,15 @@ func GetReq(clusterApiConfig ApiConfig, apiPath string, data interface{}) ([]byt
 	resp, err := client.R().
 		SetBody(data).
 		Get(fmt.Sprintf("%s/%s", clusterApiConfig.ApiUrl, apiPath))
+	if err != nil {
+		return nil, err
+	}
 
 	if resp.IsError() {
 		return nil, fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
 	}
 
-	return resp.Body(), err
+	return resp.Body(), nil
 }
 
 func PostReq(clusterApiConfig ApiConfig, apiPath string, data interface{}) error {
@@ -38,22 +41,28 @@ func PostReq(clusterApiConfig ApiConfig, apiPath string, data interface{}) error
 	resp, err := client.R().
 		SetBody(data).
 		Post(fmt.Sprintf("%s/%s", clusterApiConfig.ApiUrl, apiPath))
+	if err != nil {
+		return err
+	}
 
 	if resp.IsError() {
 		return fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
 	}
 
-	return err
+	return nil
 }
 
 func DeleteReq(clusterApiConfig ApiConfig, apiPath string) error {
 	client := getClient(clusterApiConfig)
 	resp, err := client.R().
 		Delete(fmt.Sprintf("%s/%s", clusterApiConfig.ApiUrl, apiPath))
+	if err != nil {
+		return err
+	}
 
 	if resp.IsError() {
 		return fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
 	}
 
-	return err
+	return nil
 }
