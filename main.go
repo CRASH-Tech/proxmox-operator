@@ -124,6 +124,13 @@ func TestStopVM(client *proxmox.Client) {
 }
 
 func TestGetNodes(client *proxmox.Client) {
-	data, err := client.NodesGet("crash-lab")
-	fmt.Println(data, err)
+	nodes, err := client.NodesGet("crash-lab")
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	for _, node := range nodes {
+		fmt.Println(node.ID)
+	}
 }

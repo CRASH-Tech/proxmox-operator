@@ -35,7 +35,8 @@ func Get(apiConfig common.ApiConfig) ([]Node, error) {
 	}
 
 	nodesData := NodesResp{}
-	if err := json.Unmarshal(data, &nodesData); err != nil {
+	err = json.Unmarshal(data, &nodesData)
+	if err != nil {
 		return nil, err
 	}
 
