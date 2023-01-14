@@ -38,7 +38,8 @@ func main() {
 	//TestStopVM(client)
 	//TestDeleteVM(client)
 	//TestGetNodes(client)
-	TestGetQemuConfig(client)
+	//TestGetQemuConfig(client)
+	TestGetClusterResources(client)
 }
 
 func getConfig(path string) (result Config) {
@@ -172,4 +173,13 @@ func TestGetQemuConfig(client *proxmox.Client) {
 		return
 	}
 	fmt.Println(qemuConfig)
+}
+
+func TestGetClusterResources(client *proxmox.Client) {
+	resources, err := client.ClusterGetResources("crash-lab")
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	fmt.Println(resources)
 }
