@@ -134,3 +134,12 @@ func TestGetNodes(client *proxmox.Client) {
 		fmt.Println(node.ID)
 	}
 }
+
+func TestGetNextId(client *proxmox.Client) {
+	nextId, err := client.ClusterGetNextId("crash-lab")
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	fmt.Println(nextId)
+}
