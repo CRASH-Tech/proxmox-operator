@@ -92,7 +92,7 @@ func PatchResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
 		return err
 	}
 
-	list, err := dynamic.Resource(resourceId).Namespace(namespace).Patch(ctx, "example-qemu", types.JSONPatchType, payload, metav1.PatchOptions{})
+	list, err := dynamic.Resource(resourceId).Patch(ctx, "example-qemu", types.JSONPatchType, payload, metav1.PatchOptions{})
 
 	fmt.Println(list)
 
