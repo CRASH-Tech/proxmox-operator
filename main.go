@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -17,15 +19,21 @@ func main() {
 	dynamic := dynamic.NewForConfigOrDie(config)
 
 	namespace := "sidero-system"
-	items, err := GetResourcesDynamically(dynamic, ctx,
-		"proxmox.xfix.org", "v1alpha1", "qemu", namespace)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		for _, item := range items {
-			fmt.Printf("%+v\n", item)
-		}
-	}
+
+	// items, err := GetResourcesDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// } else {
+	// 	for _, item := range items {
+	// 		fmt.Printf("%+v\n", item)
+	// 	}
+	// }
+
+	// err := GetResourceDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
+	// fmt.Println(err)
+
+	err := PatchResourcesDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
+	fmt.Println(err)
 }
 
 func GetResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
@@ -45,4 +53,52 @@ func GetResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
 	}
 
 	return list.Items, nil
+}
+
+func GetResourceDynamically(dynamic dynamic.Interface, ctx context.Context,
+	group string, version string, resource string, namespace string) error {
+
+	resourceId := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	//obj, err := dynamic.Resource(resourceId).Get(ctx, "example-qemu", metav1.GetOptions{})
+	err := dynamic.Resource(resourceId).Delete(ctx, "example-qemu", metav1.DeleteOptions{})
+
+	return err
+}
+
+func PatchResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
+	group string, version string, resource string, namespace string) error {
+
+	resourceId := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+
+	patch := []interface{}{
+		map[string]interface{}{
+			"op":    "replace",
+			"path":  "/spec/accepted",
+			"value": true,
+		},
+	}
+
+	payload, err := json.Marshal(patch)
+	if err != nil {
+		return err
+	}
+
+	list, err := dynamic.Resource(resourceId).Namespace(namespace).Patch(ctx, "example-qemu", types.JSONPatchType, payload, metav1.PatchOptions{})
+
+	fmt.Println(list)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
