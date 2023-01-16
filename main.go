@@ -13,6 +13,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+// if kubeconfig == "" {
+// 	log.Printf("using in-cluster configuration")
+// 	config, err = rest.InClusterConfig()
+// } else {
+// 	log.Printf("using configuration from '%s'", kubeconfig)
+// 	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+// }
+
 func main() {
 	ctx := context.Background()
 	config := ctrl.GetConfigOrDie()

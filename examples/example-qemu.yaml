@@ -4,11 +4,9 @@ metadata:
   name: example-qemu
 spec:
   accepted: false
-  hostname: 10.1.103.18
-  system:
-    family: Unknown
-    manufacturer: QEMU
-    productName: Standard PC (i440FX + PIIX, 1996)
-    serialNumber: Unknown
-    skuNumber: Unknown
-    version: pc-i440fx-6.2
+  cluster: crash-lab
+  node: crash-lab
+  pool: crash-lab
+  config:
+    sockets: "2"
+    cores: "4"

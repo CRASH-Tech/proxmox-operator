@@ -33,39 +33,26 @@ spec:
               type: object
               required:
                 - accepted
+                - cluster
+                - node
               properties:
                 accepted:
                   type: boolean
-                hostname:
+                cluster:
                   type: string
-                system:
+                node:
+                  type: string
+                pool:
+                  type: string
+                config:
+                  additionalProperties:
+                    type: string
+                  description: Qemu devices
                   type: object
-                  properties:
-                    family:
-                      type: string
-                    manufacturer:
-                      type: string
-                    productName:
-                      type: string
-                    serialNumber:
-                      type: string
-                    skuNumber:
-                      type: string
-                    version:
-                      type: string
             status:
               description: ServerStatus defines the observed state of Server.
               type: object
               properties:
-                addresses:
-                  description: Addresses lists discovered node IPs.
-                  type: array
-                  items:
-                    description: NodeAddress contains information for the node's address.
-                    type: object
-                    required:
-                      - power
-                    properties:
                 power:
                   description: >-
                     Power is the current power state of the server: "on", "off"
