@@ -1,16 +1,18 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
+	"flag"
+	"io/ioutil"
+	"log"
+	"os"
 
+	. "github.com/CRASH-Tech/proxmox-operator/cmd/common"
 	proxmoxoperator "github.com/CRASH-Tech/proxmox-operator/cmd/proxmox-operator"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
+	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // if kubeconfig == "" {
@@ -21,10 +23,41 @@ import (
 // 	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 // }
 
+var (
+	version = "0.0.1"
+	config  Config
+)
+
+func init() {
+	var configPath string
+	flag.StringVar(&configPath, "c", "config.yaml", "config file path. Default: config.yaml")
+	c, err := readConfig(configPath)
+	if err != nil {
+		panic(err)
+	}
+	config = c
+
+	var restConfig *rest.Config
+	if path, isSet := os.LookupEnv("KUBECONFIG"); isSet {
+		log.Printf("using configuration from '%s'", path)
+		restConfig, err = clientcmd.BuildConfigFromFlags("", path)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		log.Printf("using in-cluster configuration")
+		restConfig, err = rest.InClusterConfig()
+		if err != nil {
+			panic(err)
+		}
+	}
+	config.DynamicClient = dynamic.NewForConfigOrDie(restConfig)
+}
+
 func main() {
 	// ctx := context.Background()
 	// config := ctrl.GetConfigOrDie()
-	// dynamic := dynamic.NewForConfigOrDie(config)
+	//dynamic := dynamic.NewForConfigOrDie(config)
 
 	// namespace := "sidero-system"
 
@@ -43,72 +76,21 @@ func main() {
 	// err := PatchResourcesDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
 	// fmt.Println(err)
 
-	proxmoxoperator.Loop()
+	proxmoxoperator.Start(config)
 }
 
-func GetResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
-	group string, version string, resource string, namespace string) (
-	[]unstructured.Unstructured, error) {
+func readConfig(path string) (Config, error) {
+	config := Config{}
+	config.Clusters = make(map[string]common.ApiConfig)
 
-	resourceId := schema.GroupVersionResource{
-		Group:    group,
-		Version:  version,
-		Resource: resource,
-	}
-	list, err := dynamic.Resource(resourceId).Namespace(namespace).
-		List(ctx, metav1.ListOptions{})
-
+	yamlFile, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
-
-	return list.Items, nil
-}
-
-func GetResourceDynamically(dynamic dynamic.Interface, ctx context.Context,
-	group string, version string, resource string, namespace string) error {
-
-	resourceId := schema.GroupVersionResource{
-		Group:    group,
-		Version:  version,
-		Resource: resource,
-	}
-
-	//obj, err := dynamic.Resource(resourceId).Get(ctx, "example-qemu", metav1.GetOptions{})
-	err := dynamic.Resource(resourceId).Delete(ctx, "example-qemu", metav1.DeleteOptions{})
-
-	return err
-}
-
-func PatchResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
-	group string, version string, resource string, namespace string) error {
-
-	resourceId := schema.GroupVersionResource{
-		Group:    group,
-		Version:  version,
-		Resource: resource,
-	}
-
-	patch := []interface{}{
-		map[string]interface{}{
-			"op":    "replace",
-			"path":  "/spec/accepted",
-			"value": true,
-		},
-	}
-
-	payload, err := json.Marshal(patch)
+	err = yaml.Unmarshal(yamlFile, &config)
 	if err != nil {
-		return err
+		return Config{}, err
 	}
 
-	list, err := dynamic.Resource(resourceId).Patch(ctx, "example-qemu", types.JSONPatchType, payload, metav1.PatchOptions{})
-
-	fmt.Println(list)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return config, err
 }

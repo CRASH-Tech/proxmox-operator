@@ -3,9 +3,14 @@ package proxmoxoperator
 import (
 	"fmt"
 	"time"
+
+	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
 )
 
-func Loop() {
-	fmt.Println("lol")
-	time.Sleep(time.Second * 1)
+func Start(config common.Config) {
+	for {
+		fmt.Println(config)
+		fmt.Println("lol")
+		time.Sleep(time.Second * 1)
+	}
 }
