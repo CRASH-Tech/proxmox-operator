@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	proxmoxoperator "github.com/CRASH-Tech/proxmox-operator/cmd/proxmox-operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // if kubeconfig == "" {
@@ -22,11 +22,11 @@ import (
 // }
 
 func main() {
-	ctx := context.Background()
-	config := ctrl.GetConfigOrDie()
-	dynamic := dynamic.NewForConfigOrDie(config)
+	// ctx := context.Background()
+	// config := ctrl.GetConfigOrDie()
+	// dynamic := dynamic.NewForConfigOrDie(config)
 
-	namespace := "sidero-system"
+	// namespace := "sidero-system"
 
 	// items, err := GetResourcesDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
 	// if err != nil {
@@ -40,8 +40,10 @@ func main() {
 	// err := GetResourceDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
 	// fmt.Println(err)
 
-	err := PatchResourcesDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
-	fmt.Println(err)
+	// err := PatchResourcesDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
+	// fmt.Println(err)
+
+	proxmoxoperator.Loop()
 }
 
 func GetResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,

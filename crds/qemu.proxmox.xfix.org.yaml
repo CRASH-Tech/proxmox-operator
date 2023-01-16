@@ -45,10 +45,9 @@ spec:
                 pool:
                   type: string
                 config:
-                  additionalProperties:
-                    type: string
-                  description: Qemu devices
+                  x-kubernetes-preserve-unknown-fields: true
                   type: object
+                  description: Qemu devices
             status:
               description: ServerStatus defines the observed state of Server.
               type: object
