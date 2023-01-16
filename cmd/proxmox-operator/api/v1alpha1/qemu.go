@@ -1,6 +1,11 @@
-package v1alpha1
+package v1alpha1 нужно как-то обрабатывать разные версии, возможно это пакет qemu, а не v1alpha1
 
-MOVE API HERE! AND CONVERT UNSTRUCTURED TO QEMU HERE!!!
+import (
+	"encoding/json"
+
+	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox-operator/api"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
 
 type Qemu struct {
 	APIVersion string    `json:"apiVersion"`
@@ -23,4 +28,38 @@ type Spec struct {
 	Config   *Config `json:"config"`
 	Node     string  `json:"node"`
 	Pool     string  `json:"pool"`
+}
+
+func Get(api api.Api, resourceId schema.GroupVersionResource, name string) (Qemu, error) {
+	item, err := api.DynamicGetClusterResource(api.Ctx, &api.Dynamic, resourceId, name)
+	if err != nil {
+		panic(err)
+	}
+
+	var qemu Qemu
+	err = json.Unmarshal(item, &qemu)
+	if err != nil {
+		return Qemu{}, err
+	}
+
+	return qemu, nil
+}
+
+func GetAll(api api.Api, resourceId schema.GroupVersionResource) ([]Qemu, error) {
+	items, err := api.DynamicGetClusterResources(api.Ctx, &api.Dynamic, resourceId)
+	if err != nil {
+		panic(err)
+	}
+
+	var result []Qemu
+	for _, item := range items {
+		var qemu Qemu
+		err = json.Unmarshal(item, &qemu)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, qemu)
+	}
+
+	return result, nil
 }
