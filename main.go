@@ -15,14 +15,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// if kubeconfig == "" {
-// 	log.Printf("using in-cluster configuration")
-// 	config, err = rest.InClusterConfig()
-// } else {
-// 	log.Printf("using configuration from '%s'", kubeconfig)
-// 	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-// }
-
 var (
 	version = "0.0.1"
 	config  Config
@@ -55,27 +47,6 @@ func init() {
 }
 
 func main() {
-	// ctx := context.Background()
-	// config := ctrl.GetConfigOrDie()
-	//dynamic := dynamic.NewForConfigOrDie(config)
-
-	// namespace := "sidero-system"
-
-	// items, err := GetResourcesDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// } else {
-	// 	for _, item := range items {
-	// 		fmt.Printf("%+v\n", item)
-	// 	}
-	// }
-
-	// err := GetResourceDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
-	// fmt.Println(err)
-
-	// err := PatchResourcesDynamically(dynamic, ctx, "proxmox.xfix.org", "v1alpha1", "qemu", namespace)
-	// fmt.Println(err)
-
 	proxmoxoperator.Start(config)
 }
 

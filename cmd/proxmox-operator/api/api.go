@@ -9,30 +9,27 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-func DynamicGetClusterResources(ctx context.Context, dynamic dynamic.Interface, resourceId schema.GroupVersionResource) (
-	[]unstructured.Unstructured, error) {
-	list, err := dynamic.Resource(resourceId).List(ctx, metav1.ListOptions{})
+func DynamicGetClusterResources(ctx context.Context, dynamic dynamic.Interface,
+	resourceId schema.GroupVersionResource) ([]unstructured.Unstructured, error) {
+
+	items, err := dynamic.Resource(resourceId).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return list.Items, nil
+	return items.Items, nil
 }
 
-// func GetResourceDynamically(dynamic dynamic.Interface, ctx context.Context,
-// 	group string, version string, resource string, namespace string) error {
+func DynamicGetClusterResource(ctx context.Context, dynamic dynamic.Interface,
+	resourceId schema.GroupVersionResource, name string) (unstructured.Unstructured, error) {
 
-// 	resourceId := schema.GroupVersionResource{
-// 		Group:    group,
-// 		Version:  version,
-// 		Resource: resource,
-// 	}
+	obj, err := dynamic.Resource(resourceId).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
 
-// 	//obj, err := dynamic.Resource(resourceId).Get(ctx, "example-qemu", metav1.GetOptions{})
-// 	err := dynamic.Resource(resourceId).Delete(ctx, "example-qemu", metav1.DeleteOptions{})
-
-// 	return err
-// }
+	return *obj, nil
+}
 
 // func PatchResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
 // 	group string, version string, resource string, namespace string) error {
