@@ -21,7 +21,7 @@ func GetResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
 		Version:  version,
 		Resource: resource,
 	}
-	list, err := dynamic.Resource(resourceId).Namespace(namespace).
+	list, err := dynamic.Resource(resourceId).
 		List(ctx, metav1.ListOptions{})
 
 	if err != nil {
