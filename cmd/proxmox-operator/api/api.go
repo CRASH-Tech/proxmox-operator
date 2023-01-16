@@ -6,6 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -31,35 +32,26 @@ func DynamicGetClusterResource(ctx context.Context, dynamic dynamic.Interface,
 	return *obj, nil
 }
 
-// func PatchResourcesDynamically(dynamic dynamic.Interface, ctx context.Context,
-// 	group string, version string, resource string, namespace string) error {
+func DynamicUpdateClusterResource(ctx context.Context, dynamic dynamic.Interface,
+	resourceId schema.GroupVersionResource, name string, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 
-// 	resourceId := schema.GroupVersionResource{
-// 		Group:    group,
-// 		Version:  version,
-// 		Resource: resource,
-// 	}
+	item, err := dynamic.Resource(resourceId).Update(ctx, &obj, metav1.UpdateOptions{})
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
 
-// 	patch := []interface{}{
-// 		map[string]interface{}{
-// 			"op":    "replace",
-// 			"path":  "/spec/accepted",
-// 			"value": true,
-// 		},
-// 	}
+	return *item, nil
+}
 
-// 	payload, err := json.Marshal(patch)
-// 	if err != nil {
-// 		return err
-// 	}
+func DynamicPatchClusterResource(ctx context.Context, dynamic dynamic.Interface,
+	resourceId schema.GroupVersionResource, name string, options []byte) (unstructured.Unstructured, error) {
 
-// 	list, err := dynamic.Resource(resourceId).Patch(ctx, "example-qemu", types.JSONPatchType, payload, metav1.PatchOptions{})
+	//item, err := dynamic.Resource(resourceId).Patch(ctx, "example-qemu", types.JSONPatchType, payload, metav1.PatchOptions{})
+	item, err := dynamic.Resource(resourceId).Patch(ctx, name, types.MergePatchType, options, metav1.PatchOptions{})
 
-// 	fmt.Println(list)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
 
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
+	return *item, nil
+}

@@ -13,7 +13,7 @@ type Config struct {
 	DynamicClient *dynamic.DynamicClient
 }
 
-func StructCR(obj unstructured.Unstructured, out *interface{}) error {
+func StructCR(obj unstructured.Unstructured, out interface{}) error {
 	objJson, err := obj.MarshalJSON()
 	if err != nil {
 		return err

@@ -1,18 +1,21 @@
 package v1alpha1
 
 type QemuImpl struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-	Spec       struct {
-		Accepted bool   `json:"accepted"`
-		Cluster  string `json:"cluster"`
+	APIVersion string `json:"apiVersion,omitempty"`
+	Kind       string `json:"kind,omitempty"`
+	Metadata   struct {
+		Name string `json:"name,omitempty"`
+	} `json:"metadata,omitempty"`
+	Spec struct {
+		Accepted bool   `json:"accepted,omitempty"`
+		Cluster  string `json:"cluster,omitempty"`
 		Config   struct {
-			Agent   bool   `json:"agent"`
-			Cores   int    `json:"cores"`
-			Sockets int    `json:"sockets"`
-			Test    string `json:"test"`
-		} `json:"config"`
-		Node string `json:"node"`
-		Pool string `json:"pool"`
-	} `json:"spec"`
+			Agent   bool   `json:"agent,omitempty"`
+			Cores   int    `json:"cores,omitempty"`
+			Sockets int    `json:"sockets,omitempty"`
+			Test    string `json:"test,omitempty"`
+		} `json:"config,omitempty"`
+		Node string `json:"node,omitempty"`
+		Pool string `json:"pool,omitempty"`
+	} `json:"spec,omitempty"`
 }
