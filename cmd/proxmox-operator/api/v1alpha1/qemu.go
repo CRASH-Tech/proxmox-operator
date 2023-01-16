@@ -1,5 +1,7 @@
 package v1alpha1
 
+MOVE API HERE! AND CONVERT UNSTRUCTURED TO QEMU HERE!!!
+
 type Qemu struct {
 	APIVersion string    `json:"apiVersion"`
 	Kind       string    `json:"kind"`
