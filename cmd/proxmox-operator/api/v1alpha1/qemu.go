@@ -1,4 +1,4 @@
-package v1alpha1 нужно как-то обрабатывать разные версии, возможно это пакет qemu, а не v1alpha1
+package v1alpha1
 
 import (
 	"encoding/json"
@@ -62,4 +62,18 @@ func GetAll(api api.Api, resourceId schema.GroupVersionResource) ([]Qemu, error)
 	}
 
 	return result, nil
+}
+
+func Patch(api api.Api, resourceId schema.GroupVersionResource, qemu Qemu) error {
+	jsonData, err := json.Marshal(qemu)
+	if err != nil {
+		return err
+	}
+
+	_, err = api.DynamicPatchClusterResource(api.Ctx, &api.Dynamic, resourceId, qemu.Metadata.Name, jsonData)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
