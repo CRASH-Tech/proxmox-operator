@@ -30,7 +30,15 @@ type Spec struct {
 	Pool     string  `json:"pool"`
 }
 
-func Get(api api.Api, resourceId schema.GroupVersionResource, name string) (Qemu, error) {
+var (
+	resourceId = schema.GroupVersionResource{
+		Group:    "proxmox.xfix.org",
+		Version:  "v1alpha1",
+		Resource: "qemu",
+	}
+)
+
+func QemuGet(api api.Api, name string) (Qemu, error) {
 	item, err := api.DynamicGetClusterResource(api.Ctx, &api.Dynamic, resourceId, name)
 	if err != nil {
 		panic(err)
@@ -45,7 +53,7 @@ func Get(api api.Api, resourceId schema.GroupVersionResource, name string) (Qemu
 	return qemu, nil
 }
 
-func GetAll(api api.Api, resourceId schema.GroupVersionResource) ([]Qemu, error) {
+func QemuGetAll(api api.Api) ([]Qemu, error) {
 	items, err := api.DynamicGetClusterResources(api.Ctx, &api.Dynamic, resourceId)
 	if err != nil {
 		panic(err)
@@ -64,7 +72,7 @@ func GetAll(api api.Api, resourceId schema.GroupVersionResource) ([]Qemu, error)
 	return result, nil
 }
 
-func Patch(api api.Api, resourceId schema.GroupVersionResource, qemu Qemu) error {
+func QemuPatch(api api.Api, qemu Qemu) error {
 	jsonData, err := json.Marshal(qemu)
 	if err != nil {
 		return err

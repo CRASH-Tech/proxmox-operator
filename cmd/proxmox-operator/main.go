@@ -9,17 +9,11 @@ import (
 	papi "github.com/CRASH-Tech/proxmox-operator/cmd/proxmox-operator/api"
 
 	v1alpha1 "github.com/CRASH-Tech/proxmox-operator/cmd/proxmox-operator/api/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func Start(config common.Config) {
 	ctx := context.Background()
 	pApi := papi.New(ctx, *config.DynamicClient)
-	resourceId := schema.GroupVersionResource{
-		Group:    "proxmox.xfix.org",
-		Version:  "v1alpha1",
-		Resource: "qemu",
-	}
 
 	for {
 		//fmt.Println(config)
@@ -27,14 +21,14 @@ func Start(config common.Config) {
 		time.Sleep(time.Second * 1)
 
 		fmt.Println("Get item:")
-		qemu, err := v1alpha1.Get(*pApi, resourceId, "example-qemu")
+		qemu, err := v1alpha1.QemuGet(*pApi, "example-qemu")
 		if err != nil {
 			panic(err)
 		}
 		fmt.Println(qemu.Metadata.Name)
 
 		fmt.Println("Get items:")
-		items, err := v1alpha1.GetAll(*pApi, resourceId)
+		items, err := v1alpha1.QemuGetAll(*pApi)
 		if err != nil {
 			panic(err)
 		}
@@ -44,12 +38,12 @@ func Start(config common.Config) {
 		}
 
 		fmt.Println("Patch item:")
-		qemu, err = v1alpha1.Get(*pApi, resourceId, "example-qemu")
+		qemu, err = v1alpha1.QemuGet(*pApi, "example-qemu")
 		if err != nil {
 			panic(err)
 		}
-		qemu.Spec.Accepted = true
-		err = v1alpha1.Patch(*pApi, resourceId, qemu)
+		qemu.Spec.Accepted = false
+		err = v1alpha1.QemuPatch(*pApi, qemu)
 		if err != nil {
 			panic(err)
 		}
