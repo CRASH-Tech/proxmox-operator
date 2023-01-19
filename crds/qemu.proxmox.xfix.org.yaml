@@ -105,13 +105,20 @@ spec:
       subresources:
         status: {}
       additionalPrinterColumns:
-        - name: Hostname
+        - name: Status
           type: string
-          description: server hostname
-          jsonPath: .spec.hostname
-        - name: Accepted
-          type: boolean
-          description: indicates if the server is accepted
-          jsonPath: .spec.accepted
+          jsonPath: .status.status
+        - name: Power
+          type: string
+          jsonPath: .status.power
+        - name: Cluster
+          type: string
+          jsonPath: .status.cluster
+        - name: Node
+          type: string
+          jsonPath: .status.node
+        - name: VMID
+          type: integer
+          jsonPath: .spec.vmid
   conversion:
     strategy: None

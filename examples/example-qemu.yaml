@@ -37,12 +37,16 @@ spec:
     kvm: 1
     agent: "0"
     numa: 1
-
-    #memory: 8192
-    #net0: "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103"
-    #cores: 8
-    #node: "crash-lab"
-    #name: "k-test-c-33"
-    #scsi0: "local-lvm:vm-107-disk-0,size=32G"
-    #sockets: 1
-    #cpu: "host"
+status:
+  status: Unknown
+  power: Unknown
+  cluster: Unknows
+  node: Unknown
+#memory: 8192
+#net0: "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103"
+#cores: 8
+#node: "crash-lab"
+#name: "k-test-c-33"
+#scsi0: "local-lvm:vm-107-disk-0,size=32G"
+#sockets: 1
+#cpu: "host"
