@@ -25,7 +25,7 @@ func Start(config common.Config) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(qemu.Metadata.Name)
+		fmt.Println(qemu.Spec)
 
 		fmt.Println("Get items:")
 		items, err := v1alpha1.QemuGetAll(*pApi)
@@ -37,16 +37,16 @@ func Start(config common.Config) {
 			fmt.Println(qemu.Metadata.Name)
 		}
 
-		fmt.Println("Patch item:")
-		qemu, err = v1alpha1.QemuGet(*pApi, "example-qemu")
-		if err != nil {
-			panic(err)
-		}
-		qemu.Spec.Accepted = false
-		err = v1alpha1.QemuPatch(*pApi, qemu)
-		if err != nil {
-			panic(err)
-		}
+		// fmt.Println("Patch item:")
+		// qemu, err = v1alpha1.QemuGet(*pApi, "example-qemu")
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// qemu.Spec.Accepted = false
+		// err = v1alpha1.QemuPatch(*pApi, qemu)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
 	}
 }
