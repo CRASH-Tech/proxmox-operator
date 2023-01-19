@@ -4,7 +4,6 @@ metadata:
   name: qemu.proxmox.xfix.org
   labels:
     app: proxmox-operator
-  annotations:
 spec:
   group: proxmox.xfix.org
   names:
@@ -32,30 +31,76 @@ spec:
               description: ServerSpec defines the desired state of Server.
               type: object
               required:
-                - accepted
                 - cluster
                 - node
+                - vmid
+                - cpu
+                - memory
               properties:
-                accepted:
-                  type: boolean
                 cluster:
                   type: string
                 node:
                   type: string
                 pool:
                   type: string
-                config:
+                vmid:
+                  type: integer
+                cpu:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    sockets:
+                      type: integer
+                    cores:
+                      type: integer
+                memory:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                    baloon:
+                      type: integer
+                network:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      model:
+                        type: string
+                      mac:
+                        type: string
+                      bridge:
+                        type: string
+                      tag:
+                        type: integer
+                disk:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      storage:
+                        type: string
+                      size:
+                        type: string
+                options:
                   x-kubernetes-preserve-unknown-fields: true
                   type: object
                   description: Qemu devices
             status:
-              description: ServerStatus defines the observed state of Server.
               type: object
               properties:
+                status:
+                  type: string
                 power:
-                  description: >-
-                    Power is the current power state of the server: "on", "off"
-                    or "unknown".
+                  type: string
+                cluster:
+                  type: string
+                node:
                   type: string
       subresources:
         status: {}

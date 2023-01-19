@@ -3,12 +3,46 @@ kind: Qemu
 metadata:
   name: example-qemu
 spec:
-  accepted: false
   cluster: crash-lab
   node: crash-lab
   pool: crash-lab
-  config:
+  vmid: 222
+  cpu:
+    type: host
     sockets: 2
-    cores: 4
-    agent: true
-    test: test
+    cores: 2
+  memory:
+    size: 8192
+    baloon: 8192
+  network:
+    - name: net0
+      model: virtio
+      mac: A2:7B:45:48:9C:E6
+      bridge: vmbr0
+      tag: 103
+  disk:
+    - name: scsi0
+      storage: local-lvm
+      size: 32G
+  options:
+    ostype: "l26"
+    bios: "seabios"
+    smbios1: "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1"
+    scsihw: "virtio-scsi-pci"
+    boot: "order=net0;ide2;scsi0"
+    ide2: "none,media=cdrom"
+    hotplug: "network,disk,usb"
+    tablet: 1
+    onboot: 0
+    kvm: 1
+    agent: "0"
+    numa: 1
+
+    #memory: 8192
+    #net0: "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103"
+    #cores: 8
+    #node: "crash-lab"
+    #name: "k-test-c-33"
+    #scsi0: "local-lvm:vm-107-disk-0,size=32G"
+    #sockets: 1
+    #cpu: "host"
