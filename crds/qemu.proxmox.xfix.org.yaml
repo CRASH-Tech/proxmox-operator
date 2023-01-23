@@ -59,7 +59,7 @@ spec:
                   properties:
                     size:
                       type: integer
-                    baloon:
+                    balloon:
                       type: integer
                 network:
                   type: array

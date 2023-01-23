@@ -13,7 +13,7 @@ spec:
     cores: 2
   memory:
     size: 8192
-    baloon: 8192
+    balloon: 8192
   network:
     - name: net0
       model: virtio

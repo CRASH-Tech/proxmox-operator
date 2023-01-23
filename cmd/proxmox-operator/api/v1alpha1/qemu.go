@@ -20,15 +20,15 @@ type QemuMetadata struct {
 }
 
 type QemuSpec struct {
-	Cluster string        `json:"cluster"`
-	Node    string        `json:"node"`
-	Pool    string        `json:"pool"`
-	Vmid    int           `json:"vmid"`
-	CPU     QemuCPU       `json:"cpu"`
-	Memory  QemuMemory    `json:"memory"`
-	Disk    []QemuDisk    `json:"disk"`
-	Network []QemuNetwork `json:"network"`
-	Options QemuOptions   `json:"options"`
+	Cluster string                 `json:"cluster"`
+	Node    string                 `json:"node"`
+	Pool    string                 `json:"pool"`
+	Vmid    int                    `json:"vmid"`
+	CPU     QemuCPU                `json:"cpu"`
+	Memory  QemuMemory             `json:"memory"`
+	Disk    []QemuDisk             `json:"disk"`
+	Network []QemuNetwork          `json:"network"`
+	Options map[string]interface{} `json:"options"`
 }
 
 type QemuCPU struct {
@@ -42,8 +42,8 @@ type QemuDisk struct {
 	Storage string `json:"storage"`
 }
 type QemuMemory struct {
-	Baloon int `json:"baloon"`
-	Size   int `json:"size"`
+	Balloon int `json:"balloon"`
+	Size    int `json:"size"`
 }
 type QemuNetwork struct {
 	Bridge string `json:"bridge"`
@@ -51,9 +51,6 @@ type QemuNetwork struct {
 	Model  string `json:"model"`
 	Name   string `json:"name"`
 	Tag    int    `json:"tag"`
-}
-type QemuOptions struct {
-	Options map[string]interface{}
 }
 
 type QemuStatus struct {
