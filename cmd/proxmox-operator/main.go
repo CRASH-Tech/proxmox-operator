@@ -12,7 +12,7 @@ func Start(config common.Config) {
 	//pApi := papi.New(ctx, *config.DynamicClient)
 	client := proxmox.NewClient(config.Clusters)
 	//client.Cluster("crash-lab").Node("crash-lab").Qemu().Create()
-	res, err := client.Cluster("crash-lab1").GetResources(proxmox.ResourceNode)
+	res, err := client.Cluster("crash-lab").GetResources(proxmox.ResourceNode)
 	if err != nil {
 		panic(err)
 	}

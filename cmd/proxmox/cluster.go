@@ -19,10 +19,16 @@ const (
 	ResourcePool    = "pool"
 )
 
+type ClusterApiConfig struct {
+	ApiUrl         string `yaml:"api_url"`
+	ApiTokenId     string `yaml:"api_token_id"`
+	ApiTokenSecret string `yaml:"api_token_secret"`
+}
+
 type Cluster struct {
-	name   string
-	apiUrl string
-	resty  *resty.Client
+	name      string
+	apiCOnfig ClusterApiConfig
+	resty     *resty.Client
 }
 
 type NextIdResp struct {
@@ -82,7 +88,7 @@ type NodeResp struct {
 func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error) {
 	resp, err := cluster.resty.R().
 		SetBody(data).
-		Get(fmt.Sprintf("%s/%s", cluster.apiUrl, apiPath))
+		Get(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +103,7 @@ func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error)
 func (cluster *Cluster) PostReq(apiPath string, data interface{}) error {
 	resp, err := cluster.resty.R().
 		SetBody(data).
-		Post(fmt.Sprintf("%s/%s", cluster.apiUrl, apiPath))
+		Post(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
 	if err != nil {
 		return err
 	}
@@ -111,7 +117,7 @@ func (cluster *Cluster) PostReq(apiPath string, data interface{}) error {
 
 func (cluster *Cluster) DeleteReq(apiPath string) error {
 	resp, err := cluster.resty.R().
-		Delete(fmt.Sprintf("%s/%s", cluster.apiUrl, apiPath))
+		Delete(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
 	if err != nil {
 		return err
 	}

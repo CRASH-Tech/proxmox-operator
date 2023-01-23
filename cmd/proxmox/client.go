@@ -7,17 +7,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type ApiConfig struct {
-	ApiUrl         string `yaml:"api_url"`
-	ApiTokenId     string `yaml:"api_token_id"`
-	ApiTokenSecret string `yaml:"api_token_secret"`
-}
-
 type Client struct {
-	clusters map[string]ApiConfig
+	clusters map[string]ClusterApiConfig
 }
 
-func NewClient(clusters map[string]ApiConfig) *Client {
+func NewClient(clusters map[string]ClusterApiConfig) *Client {
 	client := Client{
 		clusters: clusters,
 	}
@@ -36,9 +30,9 @@ func (client *Client) Cluster(cluster string) *Cluster {
 	restyClient.SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", apiConfig.ApiTokenId, apiConfig.ApiTokenSecret))
 
 	result := Cluster{
-		name:   cluster,
-		apiUrl: apiConfig.ApiUrl,
-		resty:  restyClient,
+		name:      cluster,
+		apiCOnfig: apiConfig,
+		resty:     restyClient,
 	}
 
 	return &result

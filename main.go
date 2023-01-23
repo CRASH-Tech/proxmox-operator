@@ -52,7 +52,7 @@ func main() {
 
 func readConfig(path string) (Config, error) {
 	config := Config{}
-	config.Clusters = make(map[string]proxmox.ApiConfig)
+	config.Clusters = make(map[string]proxmox.ClusterApiConfig)
 
 	yamlFile, err := ioutil.ReadFile(path)
 	if err != nil {
