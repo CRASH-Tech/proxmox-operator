@@ -12,10 +12,10 @@ import (
 
 func Start(config common.Config) {
 	ctx := context.Background()
-	kubernetesClient := api.New(ctx, *config.DynamicClient)
-	proxmoxClient := proxmox.NewClient(config.Clusters)
+	kClient := api.New(ctx, *config.DynamicClient)
+	pClient := proxmox.NewClient(config.Clusters)
 	//client.Cluster("crash-lab").Node("crash-lab").Qemu().Create()
-	res, err := proxmoxClient.Cluster("crash-lab").GetResources(proxmox.ResourceNode)
+	res, err := pClient.Cluster("crash-lab").GetResources(proxmox.ResourceNode)
 	if err != nil {
 		panic(err)
 	}
@@ -29,22 +29,22 @@ func Start(config common.Config) {
 	// time.Sleep(time.Second * 1)
 
 	fmt.Println("Get item:")
-	cr, err := v1alpha1.QemuGet(*kubernetesClient, "example-qemu")
+	cr, err := v1alpha1.QemuGet(*kClient, "example-qemu")
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(cr.Spec)
 
 	fmt.Println("Get items:")
-	crs, err := v1alpha1.QemuGetAll(*kubernetesClient)
+	crs, err := v1alpha1.QemuGetAll(*kClient)
 	if err != nil {
 		panic(err)
 	}
 
 	for _, cr := range crs {
 		fmt.Println(cr.Metadata.Name)
-		qemu := buildQemuConfig(proxmoxClient, cr)
-		err := proxmoxClient.Cluster(cr.Spec.Cluster).Node(cr.Spec.Node).Qemu().Create(qemu)
+		qemu := buildQemuConfig(pClient, cr)
+		err := pClient.Cluster(cr.Spec.Cluster).Node(cr.Spec.Node).Qemu().Create(qemu)
 		if err != nil {
 			panic(err)
 		}
