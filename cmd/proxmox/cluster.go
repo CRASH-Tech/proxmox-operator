@@ -20,9 +20,9 @@ const (
 )
 
 type Cluster struct {
-	name      string
-	apiConfig ApiConfig
-	resty     *resty.Client
+	name   string
+	apiUrl string
+	resty  *resty.Client
 }
 
 type NextIdResp struct {
@@ -82,7 +82,7 @@ type NodeResp struct {
 func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error) {
 	resp, err := cluster.resty.R().
 		SetBody(data).
-		Get(fmt.Sprintf("%s/%s", cluster.apiConfig.ApiUrl, apiPath))
+		Get(fmt.Sprintf("%s/%s", cluster.apiUrl, apiPath))
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error)
 func (cluster *Cluster) PostReq(apiPath string, data interface{}) error {
 	resp, err := cluster.resty.R().
 		SetBody(data).
-		Post(fmt.Sprintf("%s/%s", cluster.apiConfig.ApiUrl, apiPath))
+		Post(fmt.Sprintf("%s/%s", cluster.apiUrl, apiPath))
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (cluster *Cluster) PostReq(apiPath string, data interface{}) error {
 
 func (cluster *Cluster) DeleteReq(apiPath string) error {
 	resp, err := cluster.resty.R().
-		Delete(fmt.Sprintf("%s/%s", cluster.apiConfig.ApiUrl, apiPath))
+		Delete(fmt.Sprintf("%s/%s", cluster.apiUrl, apiPath))
 	if err != nil {
 		return err
 	}
