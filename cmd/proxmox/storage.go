@@ -1,18 +1,24 @@
 package proxmox
 
 import (
-	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/nodes/storage"
+	"fmt"
+
+	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
 	log "github.com/sirupsen/logrus"
 )
 
-func (client *Client) StorageCreate(cluster string, storageConfig storage.StorageConfig) error {
-	apiConfig, err := client.getApiConfig(cluster)
-	if err != nil {
-		return err
-	}
+type StorageConfig struct {
+	Node     string `json:"node"`
+	VmId     int    `json:"vmid"`
+	Filename string `json:"filename"`
+	Size     string `json:"size"`
+	Storage  string `json:"storage"`
+}
 
-	log.Infof("Creating storage, cluster: %s config: %+v", cluster, storageConfig)
-	err = storage.Create(apiConfig, storageConfig)
+func (node *Node) StorageCreate(storageConfig StorageConfig) error {
+	log.Infof("Creating storage, cluster: %s, node: %s config: %+v", node.cluster.name, node.name, storageConfig)
+	apiPath := fmt.Sprintf("/nodes/%s/storage/%s/content", node.name, storageConfig.Storage)
+	err := common.PostReq(node.cluster.apiConfig, apiPath, storageConfig)
 	if err != nil {
 		return err
 	}

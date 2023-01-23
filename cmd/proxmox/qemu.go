@@ -1,13 +1,22 @@
 package proxmox
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/nodes/qemu"
+	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
 	log "github.com/sirupsen/logrus"
 )
 
-func checkQemuConfig(qemuConfig qemu.QemuConfig) error {
+type Qemu struct {
+	node *Node
+}
+
+type (
+	QemuConfig map[string]interface{}
+)
+
+func checkQemuConfig(qemuConfig QemuConfig) error {
 	if _, isExist := qemuConfig["node"]; !isExist {
 		return fmt.Errorf("no node name in qemu config")
 	}
@@ -18,19 +27,15 @@ func checkQemuConfig(qemuConfig qemu.QemuConfig) error {
 	return nil
 }
 
-func (client *Client) QemuCreate(cluster string, qemuConfig qemu.QemuConfig) error {
+func (qemu *Qemu) Create(qemuConfig QemuConfig) error {
+	log.Infof("Creating qemu VM, cluster: %s, node: %s config: %+v", qemu.node.cluster.name, qemu.node.name, qemuConfig)
 	err := checkQemuConfig(qemuConfig)
 	if err != nil {
 		return err
 	}
 
-	apiConfig, err := client.getApiConfig(cluster)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Creating qemu VM, cluster: %s config: %+v", cluster, qemuConfig)
-	err = qemu.Create(apiConfig, qemuConfig)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu", qemu.node.name)
+	err = common.PostReq(qemu.node.cluster.apiConfig, apiPath, qemuConfig)
 	if err != nil {
 		return err
 	}
@@ -38,19 +43,15 @@ func (client *Client) QemuCreate(cluster string, qemuConfig qemu.QemuConfig) err
 	return nil
 }
 
-func (client *Client) QemuSetConfig(cluster string, qemuConfig qemu.QemuConfig) error {
+func (qemu *Qemu) SetConfig(qemuConfig QemuConfig) error {
+	log.Infof("Set qemu VM config, cluster: %s, node: %s config: %+v", qemu.node.cluster.name, qemu.node.name, qemuConfig)
 	err := checkQemuConfig(qemuConfig)
 	if err != nil {
 		return err
 	}
 
-	apiConfig, err := client.getApiConfig(cluster)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Set qemu VM config, cluster: %s config: %+v", cluster, qemuConfig)
-	err = qemu.SetConfig(apiConfig, qemuConfig)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/config", qemu.node.name, qemuConfig["vmid"])
+	err = common.PostReq(qemu.node.cluster.apiConfig, apiPath, qemuConfig)
 	if err != nil {
 		return err
 	}
@@ -58,14 +59,17 @@ func (client *Client) QemuSetConfig(cluster string, qemuConfig qemu.QemuConfig) 
 	return nil
 }
 
-func (client *Client) QemuGetConfig(cluster, node string, vmId int) (qemu.QemuConfig, error) {
-	apiConfig, err := client.getApiConfig(cluster)
+func (qemu *Qemu) GetConfig(vmId int) (QemuConfig, error) {
+	log.Infof("Get qemu VM config, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/config", qemu.node.name, vmId)
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
+	qemuConfigData, err := common.GetReq(qemu.node.cluster.apiConfig, apiPath, data)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Infof("Get qemu VM config, cluster: %s node: %s vmid: %d", cluster, node, vmId)
-	qemuConfig, err := qemu.GetConfig(apiConfig, node, vmId)
+	qemuConfig := QemuConfig{}
+	err = json.Unmarshal(qemuConfigData, &qemuConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -73,29 +77,10 @@ func (client *Client) QemuGetConfig(cluster, node string, vmId int) (qemu.QemuCo
 	return qemuConfig, nil
 }
 
-func (client *Client) QemuDelete(cluster, node string, vmId int) error {
-	apiConfig, err := client.getApiConfig(cluster)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Deleting qemu VM, cluster: %s node: %s vmid: %d", cluster, node, vmId)
-	err = qemu.Delete(apiConfig, node, vmId)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (client *Client) QemuStart(cluster, node string, vmId int) error {
-	apiConfig, err := client.getApiConfig(cluster)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Starting qemu VM, cluster: %s node: %s vmid: %d", cluster, node, vmId)
-	err = qemu.Start(apiConfig, node, vmId)
+func (qemu *Qemu) Delete(vmId int) error {
+	log.Infof("Deleting qemu VM, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d", qemu.node.name, vmId)
+	err := common.DeleteReq(qemu.node.cluster.apiConfig, apiPath)
 	if err != nil {
 		return err
 	}
@@ -103,14 +88,23 @@ func (client *Client) QemuStart(cluster, node string, vmId int) error {
 	return nil
 }
 
-func (client *Client) QemuStop(cluster, node string, vmId int) error {
-	apiConfig, err := client.getApiConfig(cluster)
+func (qemu *Qemu) Start(vmId int) error {
+	log.Infof("Starting qemu VM, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/start", qemu.node.name, vmId)
+	err := common.PostReq(qemu.node.cluster.apiConfig, apiPath, data)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("Starting qemu VM, cluster: %s node: %s vmid: %d", cluster, node, vmId)
-	err = qemu.Stop(apiConfig, node, vmId)
+	return nil
+}
+
+func (qemu *Qemu) Stop(vmId int) error {
+	log.Infof("Starting qemu VM, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/stop", qemu.node.name, vmId)
+	err := common.PostReq(qemu.node.cluster.apiConfig, apiPath, data)
 	if err != nil {
 		return err
 	}

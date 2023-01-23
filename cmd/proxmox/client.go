@@ -7,21 +7,37 @@ import (
 )
 
 type Client struct {
-	Clusters map[string]common.ApiConfig
+	clusters map[string]common.ApiConfig
 }
 
 func NewClient(clusters map[string]common.ApiConfig) *Client {
 	client := Client{
-		Clusters: clusters,
+		clusters: clusters,
 	}
 
 	return &client
 }
 
 func (client *Client) getApiConfig(clusterName string) (common.ApiConfig, error) {
-	clusterApiConfig, isExists := client.Clusters[clusterName]
+	clusterApiConfig, isExists := client.clusters[clusterName]
 	if !isExists {
 		return clusterApiConfig, fmt.Errorf("unknown cluster: %s", clusterName)
 	}
-	return client.Clusters[clusterName], nil
+
+	return client.clusters[clusterName], nil
+}
+
+func (client *Client) Cluster(cluster string) *Cluster {
+	apiConfig, err := client.getApiConfig(cluster)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	result := Cluster{
+		name:      cluster,
+		apiConfig: apiConfig,
+	}
+
+	return &result
 }
