@@ -7,8 +7,8 @@ import (
 	"os"
 
 	. "github.com/CRASH-Tech/proxmox-operator/cmd/common"
+	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
 	proxmoxoperator "github.com/CRASH-Tech/proxmox-operator/cmd/proxmox-operator"
-	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
@@ -52,7 +52,7 @@ func main() {
 
 func readConfig(path string) (Config, error) {
 	config := Config{}
-	config.Clusters = make(map[string]common.ApiConfig)
+	config.Clusters = make(map[string]proxmox.ApiConfig)
 
 	yamlFile, err := ioutil.ReadFile(path)
 	if err != nil {

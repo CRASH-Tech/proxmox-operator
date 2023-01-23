@@ -1,11 +1,11 @@
 package common
 
 import (
-	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
+	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
 	"k8s.io/client-go/dynamic"
 )
 
 type Config struct {
-	Clusters      map[string]common.ApiConfig `yaml:"clusters"`
+	Clusters      map[string]proxmox.ApiConfig `yaml:"clusters"`
 	DynamicClient *dynamic.DynamicClient
 }

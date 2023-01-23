@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/common"
+	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,7 +21,8 @@ const (
 
 type Cluster struct {
 	name      string
-	apiConfig common.ApiConfig
+	apiConfig ApiConfig
+	resty     *resty.Client
 }
 
 type NextIdResp struct {
@@ -78,12 +79,56 @@ type NodeResp struct {
 	Node           string  `json:"node"`
 }
 
+func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error) {
+	resp, err := cluster.resty.R().
+		SetBody(data).
+		Get(fmt.Sprintf("%s/%s", cluster.apiConfig.ApiUrl, apiPath))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.IsError() {
+		return nil, fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
+	}
+
+	return resp.Body(), nil
+}
+
+func (cluster *Cluster) PostReq(apiPath string, data interface{}) error {
+	resp, err := cluster.resty.R().
+		SetBody(data).
+		Post(fmt.Sprintf("%s/%s", cluster.apiConfig.ApiUrl, apiPath))
+	if err != nil {
+		return err
+	}
+
+	if resp.IsError() {
+		return fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
+	}
+
+	return nil
+}
+
+func (cluster *Cluster) DeleteReq(apiPath string) error {
+	resp, err := cluster.resty.R().
+		Delete(fmt.Sprintf("%s/%s", cluster.apiConfig.ApiUrl, apiPath))
+	if err != nil {
+		return err
+	}
+
+	if resp.IsError() {
+		return fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
+	}
+
+	return nil
+}
+
 func (cluster *Cluster) GetNextId() (int, error) {
 	log.Infof("Get next id, cluster: %s", cluster.name)
 
 	apiPath := "/cluster/nextid"
 
-	data, err := common.GetReq(cluster.apiConfig, apiPath, nil)
+	data, err := cluster.GetReq(apiPath, nil)
 	if err != nil {
 		return -1, err
 	}
@@ -106,7 +151,7 @@ func (cluster *Cluster) GetResources(resourceType string) ([]Resource, error) {
 	apiPath := "/cluster/resources"
 
 	reqData := fmt.Sprintf(`{"type":"%s"}`, resourceType)
-	data, err := common.GetReq(cluster.apiConfig, apiPath, reqData)
+	data, err := cluster.GetReq(apiPath, reqData)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +177,7 @@ func (cluster *Cluster) Node(node string) *Node {
 func (cluster *Cluster) GetNodes() ([]Node, error) {
 	apiPath := "/nodes"
 
-	data, err := common.GetReq(cluster.apiConfig, apiPath, nil)
+	data, err := cluster.GetReq(apiPath, nil)
 	if err != nil {
 		return nil, err
 	}
