@@ -1,15 +1,11 @@
 package v1alpha1
 
-type Qemu struct {
-	APIVersion string       `json:"apiVersion"`
-	Kind       string       `json:"kind"`
-	Metadata   QemuMetadata `json:"metadata"`
-	Spec       QemuSpec     `json:"spec"`
-	Status     QemuStatus   `json:"status"`
-}
+import "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api"
 
-type QemuMetadata struct {
-	Name string `json:"name"`
+type Qemu struct {
+	*api.CustomResource
+	Spec   QemuSpec   `json:"spec"`
+	Status QemuStatus `json:"status"`
 }
 
 type QemuSpec struct {
@@ -29,15 +25,18 @@ type QemuCPU struct {
 	Sockets int    `json:"sockets"`
 	Type    string `json:"type"`
 }
+
 type QemuDisk struct {
 	Name    string `json:"name"`
 	Size    string `json:"size"`
 	Storage string `json:"storage"`
 }
+
 type QemuMemory struct {
 	Balloon int `json:"balloon"`
 	Size    int `json:"size"`
 }
+
 type QemuNetwork struct {
 	Bridge string `json:"bridge"`
 	Mac    string `json:"mac"`

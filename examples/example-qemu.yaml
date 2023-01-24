@@ -2,6 +2,8 @@ apiVersion: proxmox.xfix.org/v1alpha1
 kind: Qemu
 metadata:
   name: example-qemu
+  finalizers:
+    - resources-finalizer.proxmox-operator.xfix.org
 spec:
   cluster: crash-lab
   node: crash-lab
