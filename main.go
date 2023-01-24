@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	. "github.com/CRASH-Tech/proxmox-operator/cmd/common"
+	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
 	kuberentes "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
 	log "github.com/sirupsen/logrus"
@@ -19,7 +19,7 @@ import (
 
 var (
 	version = "0.0.1"
-	config  Config
+	config  common.Config
 )
 
 func init() {
@@ -53,17 +53,17 @@ func main() {
 	Start()
 }
 
-func readConfig(path string) (Config, error) {
-	config := Config{}
+func readConfig(path string) (common.Config, error) {
+	config := common.Config{}
 	config.Clusters = make(map[string]proxmox.ClusterApiConfig)
 
 	yamlFile, err := ioutil.ReadFile(path)
 	if err != nil {
-		return Config{}, err
+		return common.Config{}, err
 	}
 	err = yaml.Unmarshal(yamlFile, &config)
 	if err != nil {
-		return Config{}, err
+		return common.Config{}, err
 	}
 
 	return config, err
