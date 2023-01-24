@@ -14,6 +14,10 @@ type Client struct {
 	dynamic dynamic.DynamicClient
 }
 
+type V1alpha1 struct {
+	client *Client
+}
+
 func NewClient(ctx context.Context, dynamic dynamic.DynamicClient) *Client {
 	client := Client{
 		ctx:     ctx,
@@ -80,6 +84,15 @@ func (client *Client) V1alpha1() *V1alpha1 {
 	return &result
 }
 
-// func (v1alpha1 *V1alpha1) Qemu() {
-// 	fmt.Println(s)
-// }
+func (v1alpha1 *V1alpha1) Qemu() *Qemu {
+	qemu := Qemu{
+		client: v1alpha1.client,
+		resourceId: schema.GroupVersionResource{
+			Group:    "proxmox.xfix.org",
+			Version:  "v1alpha1",
+			Resource: "qemu",
+		},
+	}
+
+	return &qemu
+}

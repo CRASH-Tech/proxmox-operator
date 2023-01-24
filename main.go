@@ -87,7 +87,11 @@ func Start() {
 	// time.Sleep(time.Second * 1)
 
 	fmt.Println("Get item:")
-	kClient.V1alpha1().Echo("lol")
+	lol, err := kClient.V1alpha1().Qemu().Get("example-qemu")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(lol)
 	// cr, err := v1alpha1.QemuGet(*kClient, "example-qemu")
 	// if err != nil {
 	// 	panic(err)

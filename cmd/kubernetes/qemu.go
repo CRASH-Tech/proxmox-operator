@@ -1,0 +1,61 @@
+package kuberentes
+
+import (
+	"encoding/json"
+
+	"github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+type Qemu struct {
+	client     *Client
+	resourceId schema.GroupVersionResource
+}
+
+func (qemu *Qemu) Get(name string) (v1alpha1.Qemu, error) {
+	item, err := qemu.client.dynamicGetClusterResource(qemu.resourceId, name)
+	if err != nil {
+		panic(err)
+	}
+
+	var result v1alpha1.Qemu
+	err = json.Unmarshal(item, &result)
+	if err != nil {
+		return v1alpha1.Qemu{}, err
+	}
+
+	return result, nil
+}
+
+func (qemu *Qemu) GetAll() ([]v1alpha1.Qemu, error) {
+	items, err := qemu.client.dynamicGetClusterResources(qemu.resourceId)
+	if err != nil {
+		panic(err)
+	}
+
+	var result []v1alpha1.Qemu
+	for _, item := range items {
+		var q v1alpha1.Qemu
+		err = json.Unmarshal(item, &q)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, q)
+	}
+
+	return result, nil
+}
+
+func (qemu *Qemu) Patch(q v1alpha1.Qemu) error {
+	jsonData, err := json.Marshal(q)
+	if err != nil {
+		return err
+	}
+
+	_, err = qemu.client.dynamicPatchClusterResource(qemu.resourceId, q.Metadata.Name, jsonData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -1,13 +1,5 @@
 package v1alpha1
 
-import (
-	"k8s.io/apimachinery/pkg/runtime/schema"
-)
-
-type V1alpha1 struct {
-	client *Client
-}
-
 type Qemu struct {
 	APIVersion string       `json:"apiVersion"`
 	Kind       string       `json:"kind"`
@@ -60,59 +52,3 @@ type QemuStatus struct {
 	Cluster string `json:"cluster"`
 	Node    string `json:"node"`
 }
-
-var (
-	resourceId = schema.GroupVersionResource{
-		Group:    "proxmox.xfix.org",
-		Version:  "v1alpha1",
-		Resource: "qemu",
-	}
-)
-
-// func QemuGet(api api.Api, name string) (Qemu, error) {
-// 	item, err := api.DynamicGetClusterResource(api.Ctx, &api.Dynamic, resourceId, name)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	var qemu Qemu
-// 	err = json.Unmarshal(item, &qemu)
-// 	if err != nil {
-// 		return Qemu{}, err
-// 	}
-
-// 	return qemu, nil
-// }
-
-// func QemuGetAll(api api.Api) ([]Qemu, error) {
-// 	items, err := api.DynamicGetClusterResources(api.Ctx, &api.Dynamic, resourceId)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	var result []Qemu
-// 	for _, item := range items {
-// 		var qemu Qemu
-// 		err = json.Unmarshal(item, &qemu)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		result = append(result, qemu)
-// 	}
-
-// 	return result, nil
-// }
-
-// func QemuPatch(api api.Api, qemu Qemu) error {
-// 	jsonData, err := json.Marshal(qemu)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	_, err = api.DynamicPatchClusterResource(api.Ctx, &api.Dynamic, resourceId, qemu.Metadata.Name, jsonData)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
