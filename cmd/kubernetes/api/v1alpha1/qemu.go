@@ -1,11 +1,12 @@
 package v1alpha1
 
 import (
-	"encoding/json"
-
-	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox-operator/api"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+type V1alpha1 struct {
+	client *Client
+}
 
 type Qemu struct {
 	APIVersion string       `json:"apiVersion"`
@@ -68,50 +69,50 @@ var (
 	}
 )
 
-func QemuGet(api api.Api, name string) (Qemu, error) {
-	item, err := api.DynamicGetClusterResource(api.Ctx, &api.Dynamic, resourceId, name)
-	if err != nil {
-		panic(err)
-	}
+// func QemuGet(api api.Api, name string) (Qemu, error) {
+// 	item, err := api.DynamicGetClusterResource(api.Ctx, &api.Dynamic, resourceId, name)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	var qemu Qemu
-	err = json.Unmarshal(item, &qemu)
-	if err != nil {
-		return Qemu{}, err
-	}
+// 	var qemu Qemu
+// 	err = json.Unmarshal(item, &qemu)
+// 	if err != nil {
+// 		return Qemu{}, err
+// 	}
 
-	return qemu, nil
-}
+// 	return qemu, nil
+// }
 
-func QemuGetAll(api api.Api) ([]Qemu, error) {
-	items, err := api.DynamicGetClusterResources(api.Ctx, &api.Dynamic, resourceId)
-	if err != nil {
-		panic(err)
-	}
+// func QemuGetAll(api api.Api) ([]Qemu, error) {
+// 	items, err := api.DynamicGetClusterResources(api.Ctx, &api.Dynamic, resourceId)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	var result []Qemu
-	for _, item := range items {
-		var qemu Qemu
-		err = json.Unmarshal(item, &qemu)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, qemu)
-	}
+// 	var result []Qemu
+// 	for _, item := range items {
+// 		var qemu Qemu
+// 		err = json.Unmarshal(item, &qemu)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		result = append(result, qemu)
+// 	}
 
-	return result, nil
-}
+// 	return result, nil
+// }
 
-func QemuPatch(api api.Api, qemu Qemu) error {
-	jsonData, err := json.Marshal(qemu)
-	if err != nil {
-		return err
-	}
+// func QemuPatch(api api.Api, qemu Qemu) error {
+// 	jsonData, err := json.Marshal(qemu)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	_, err = api.DynamicPatchClusterResource(api.Ctx, &api.Dynamic, resourceId, qemu.Metadata.Name, jsonData)
-	if err != nil {
-		return err
-	}
+// 	_, err = api.DynamicPatchClusterResource(api.Ctx, &api.Dynamic, resourceId, qemu.Metadata.Name, jsonData)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
