@@ -7,6 +7,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	STATUS_RUNNING = "running"
+	STATUS_STOPPED = "stopped"
+)
+
 type Qemu struct {
 	node *Node
 }
@@ -14,6 +19,31 @@ type Qemu struct {
 type (
 	QemuConfig map[string]interface{}
 )
+
+type QemuStatus struct {
+	Data struct {
+		Maxdisk    int64   `json:"maxdisk"`
+		Diskread   int     `json:"diskread"`
+		Maxmem     int64   `json:"maxmem"`
+		CPU        float64 `json:"cpu"`
+		BalloonMin int64   `json:"balloon_min"`
+		Disk       int     `json:"disk"`
+		Qmpstatus  string  `json:"qmpstatus"`
+		Uptime     int     `json:"uptime"`
+		Netin      int     `json:"netin"`
+		Shares     int     `json:"shares"`
+		Ha         struct {
+			Managed int `json:"managed"`
+		} `json:"ha"`
+		Diskwrite int    `json:"diskwrite"`
+		Vmid      int    `json:"vmid"`
+		Mem       int    `json:"mem"`
+		Status    string `json:"status"`
+		Netout    int    `json:"netout"`
+		Cpus      int    `json:"cpus"`
+		Name      string `json:"name"`
+	} `json:"data"`
+}
 
 func checkQemuConfig(qemuConfig QemuConfig) error {
 	if _, isExist := qemuConfig["node"]; !isExist {
@@ -109,4 +139,23 @@ func (qemu *Qemu) Stop(vmId int) error {
 	}
 
 	return nil
+}
+
+func (qemu *Qemu) GetStatus(vmId int) (QemuStatus, error) {
+	log.Infof("Get qemu VM status, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", qemu.node.name, vmId)
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
+
+	qemuStatusData, err := qemu.node.cluster.GetReq(apiPath, data)
+	if err != nil {
+		return QemuStatus{}, err
+	}
+
+	qemuStatus := QemuStatus{}
+	err = json.Unmarshal(qemuStatusData, &qemuStatus)
+	if err != nil {
+		return QemuStatus{}, err
+	}
+
+	return qemuStatus, nil
 }
