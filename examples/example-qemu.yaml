@@ -39,11 +39,11 @@ spec:
     kvm: 1
     agent: "0"
     numa: 1
-status:
-  status: Unknown
-  power: Unknown
-  cluster: Unknows
-  node: Unknown
+# status:
+#   status: Unknown
+#   power: Unknown
+#   cluster: Unknows
+#   node: Unknown
 #memory: 8192
 #net0: "virtio=A2:7B:45:48:9C:E6,bridge=vmbr0,tag=103"
 #cores: 8

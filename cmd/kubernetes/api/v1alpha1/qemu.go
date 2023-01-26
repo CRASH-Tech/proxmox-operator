@@ -2,6 +2,16 @@ package v1alpha1
 
 import "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api"
 
+const (
+	STATUS_DEPLOY_EMPTY      = ""
+	STATUS_DEPLOY_PROCESSING = "Processing"
+	STATUS_DEPLOY_DEPLOYED   = "Deployed"
+	STATUS_DEPLOY_ERROR      = "Error"
+	STATUS_POWER_ON          = "On"
+	STATUS_POWER_OFF         = "Off"
+	STATUS_POWER_UNKNOWN     = "Unknown"
+)
+
 type Qemu struct {
 	*api.CustomResource
 	Spec   QemuSpec   `json:"spec"`
@@ -46,8 +56,13 @@ type QemuNetwork struct {
 }
 
 type QemuStatus struct {
-	Status  string `json:"status"`
+	Deploy  string `json:"deploy"`
 	Power   string `json:"power"`
 	Cluster string `json:"cluster"`
 	Node    string `json:"node"`
+	VmId    int    `json:"vmid"`
+	Net     map[string]struct {
+		Interface string `json:"interface"`
+		Mac       string `json:"mac"`
+	} `json:"net"`
 }

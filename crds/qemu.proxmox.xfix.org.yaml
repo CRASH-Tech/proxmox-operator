@@ -94,7 +94,7 @@ spec:
             status:
               type: object
               properties:
-                status:
+                deploy:
                   type: string
                 power:
                   type: string
@@ -102,12 +102,23 @@ spec:
                   type: string
                 node:
                   type: string
+                vmid:
+                  type: integer
+                net:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      interface:
+                        type: string
+                      mac:
+                        type: string
       subresources:
         status: {}
       additionalPrinterColumns:
-        - name: Status
+        - name: Deploy
           type: string
-          jsonPath: .status.status
+          jsonPath: .status.deploy
         - name: Power
           type: string
           jsonPath: .status.power
@@ -119,6 +130,6 @@ spec:
           jsonPath: .status.node
         - name: VMID
           type: integer
-          jsonPath: .spec.vmid
+          jsonPath: .status.vmid
   conversion:
     strategy: None

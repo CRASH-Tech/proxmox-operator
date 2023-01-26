@@ -7,13 +7,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+var(
+	
+)
+
 type Qemu struct {
 	client     *Client
 	resourceId schema.GroupVersionResource
 }
 
 func (qemu *Qemu) Get(name string) (v1alpha1.Qemu, error) {
-	item, err := qemu.client.dynamicGetClusterResource(qemu.resourceId, name)
+	item, err := qemu.client.dynamicGet(qemu.resourceId, name)
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +32,7 @@ func (qemu *Qemu) Get(name string) (v1alpha1.Qemu, error) {
 }
 
 func (qemu *Qemu) GetAll() ([]v1alpha1.Qemu, error) {
-	items, err := qemu.client.dynamicGetClusterResources(qemu.resourceId)
+	items, err := qemu.client.dynamicGetAll(qemu.resourceId)
 	if err != nil {
 		panic(err)
 	}
@@ -52,7 +56,21 @@ func (qemu *Qemu) Patch(q v1alpha1.Qemu) error {
 		return err
 	}
 
-	_, err = qemu.client.dynamicPatchClusterResource(qemu.resourceId, q.Metadata.Name, jsonData)
+	_, err = qemu.client.dynamicPatch(qemu.resourceId, q.Metadata.Name, jsonData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (qemu *Qemu) UpdateStatus(q v1alpha1.Qemu) error {
+	jsonData, err := json.Marshal(q)
+	if err != nil {
+		return err
+	}
+
+	_, err = qemu.client.dynamicUpdateStatus(qemu.resourceId, q.Metadata.Name, jsonData)
 	if err != nil {
 		return err
 	}

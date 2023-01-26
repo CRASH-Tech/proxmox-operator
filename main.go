@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
+	"time"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
 	kuberentes "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes"
+	"github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api/v1alpha1"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -50,7 +54,16 @@ func init() {
 
 func main() {
 	log.Infof("Starting proxmox-operator %s\n", version)
-	Start()
+
+	ctx := context.Background()
+	kClient := kuberentes.NewClient(ctx, *config.DynamicClient)
+	pClient := proxmox.NewClient(config.Clusters)
+
+	for {
+		processV1aplha1(kClient, pClient)
+
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func readConfig(path string) (common.Config, error) {
@@ -69,102 +82,76 @@ func readConfig(path string) (common.Config, error) {
 	return config, err
 }
 
-func Start() {
-	ctx := context.Background()
-	kClient := kuberentes.NewClient(ctx, *config.DynamicClient)
-	// pClient := proxmox.NewClient(config.Clusters)
-	// res, err := pClient.Cluster("crash-lab").GetResources(proxmox.ResourceNode)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(res)
-	//client.Cluster("crash-lab").Node("crash-lab").
-	//fmt.Println(client)
+func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
+	log.Info("Refreshing v1alpha1...")
 
-	//for {
-	//fmt.Println(config)
-	// fmt.Println("lol")
-	// time.Sleep(time.Second * 1)
-
-	fmt.Println("Get item:")
-	lol, err := kClient.V1alpha1().Qemu().Get("example-qemu")
+	qemus, err := kCLient.V1alpha1().Qemu().GetAll()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(lol)
-	// cr, err := v1alpha1.QemuGet(*kClient, "example-qemu")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	//fmt.Println(cr.Spec)
 
-	// fmt.Println("Get items:")
-	// crs, err := v1alpha1.QemuGetAll(*kClient)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	for _, qemu := range qemus {
+		fmt.Println(qemu.Status)
+		if qemu.Status.Deploy == "" {
+			qemu.Status.Deploy = "Deploying"
+			qemu.Status.Cluster = "test"
+			qemu.RemoveFinalizers()
+			//err := kCLient.V1alpha1().Qemu().Patch(qemu)
+			err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+			if err != nil {
+				panic(err)
+			}
+		}
 
-	// for _, cr := range crs {
-	// 	fmt.Println(cr.Metadata.Name)
-	// 	qemu := buildQemuConfig(pClient, cr)
-	// 	err := pClient.Cluster(cr.Spec.Cluster).Node(cr.Spec.Node).Qemu().Create(qemu)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
+	}
 
-	// fmt.Println("Patch item:")
-	// qemu, err = v1alpha1.QemuGet(*pApi, "example-qemu")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// qemu.Spec.Accepted = false
-	// err = v1alpha1.QemuPatch(*pApi, qemu)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	//}
 }
 
-// func buildQemuConfig(client *proxmox.Client, cr v1alpha1.Qemu) (result proxmox.QemuConfig) {
-// 	result = make(map[string]interface{})
+func buildQemuConfig(client *proxmox.Client, cr v1alpha1.Qemu) (proxmox.QemuConfig, error) {
+	result := make(map[string]interface{})
 
-// 	result["vmid"] = cr.Spec.Vmid
-// 	result["node"] = cr.Spec.Node
-// 	result["name"] = cr.Metadata.Name
-// 	result["cpu"] = cr.Spec.CPU.Type
-// 	result["sockets"] = cr.Spec.CPU.Sockets
-// 	result["cores"] = cr.Spec.CPU.Cores
-// 	result["memory"] = cr.Spec.Memory.Size
-// 	result["balloon"] = cr.Spec.Memory.Balloon
+	result["vmid"] = cr.Spec.Vmid
+	result["node"] = cr.Spec.Node
+	result["name"] = cr.Metadata.Name
+	result["cpu"] = cr.Spec.CPU.Type
+	result["sockets"] = cr.Spec.CPU.Sockets
+	result["cores"] = cr.Spec.CPU.Cores
+	result["memory"] = cr.Spec.Memory.Size
+	result["balloon"] = cr.Spec.Memory.Balloon
 
-// 	for _, iface := range cr.Spec.Network {
-// 		if iface.Mac == "" {
-// 			result[iface.Name] = fmt.Sprintf("model=%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
-// 		} else {
-// 			result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
-// 		}
-// 	}
+	for _, iface := range cr.Spec.Network {
+		if iface.Mac == "" {
+			result[iface.Name] = fmt.Sprintf("model=%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
+		} else {
+			result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
+		}
+	}
 
-// 	for _, disk := range cr.Spec.Disk {
-// 		storageConfig := proxmox.StorageConfig{
-// 			Node:     cr.Spec.Node,
-// 			VmId:     cr.Spec.Vmid,
-// 			Filename: "vm-222-disk-0",
-// 			Size:     disk.Size,
-// 			Storage:  disk.Storage,
-// 		}
-// 		err := client.Cluster(cr.Spec.Cluster).Node(cr.Spec.Node).StorageCreate(storageConfig)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-// 		result[disk.Name] = fmt.Sprintf("%s:%s,size=%s", disk.Storage, "vm-222-disk-0", disk.Size)
-// 	}
+	for _, disk := range cr.Spec.Disk {
+		r := regexp.MustCompile(`^[a-z]+(\d+)$`)
+		diskNum := r.FindStringSubmatch(disk.Name)
+		if len(diskNum) != 2 {
+			return nil, errors.New(fmt.Sprintf("cannot extract disk num: %s", disk.Name))
+		}
+		filename := fmt.Sprintf("vm-%d-disk-%s", cr.Spec.Vmid, diskNum[1])
+		fmt.Println(filename)
+		storageConfig := proxmox.StorageConfig{
+			Node:     cr.Spec.Node,
+			VmId:     cr.Spec.Vmid,
+			Filename: filename,
+			Size:     disk.Size,
+			Storage:  disk.Storage,
+		}
+		err := client.Cluster(cr.Spec.Cluster).Node(cr.Spec.Node).StorageCreate(storageConfig)
+		if err != nil {
+			panic(err)
+		}
+		result[disk.Name] = fmt.Sprintf("%s:%s,size=%s", disk.Storage, "vm-222-disk-0", disk.Size)
+	}
 
-// 	for k, v := range cr.Spec.Options {
-// 		result[k] = v
-// 	}
+	for k, v := range cr.Spec.Options {
+		result[k] = v
+	}
 
-// 	return
-// }
+	return result, nil
+}
