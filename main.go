@@ -133,16 +133,16 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 
 func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
 	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DELETING
-	_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	qemu, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		panic(err)
 	}
 
 	pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().Delete(qemu.Spec.Vmid)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	fmt.Println("loool")
+	if err != nil {
+		panic(err)
+	}
+
 	qemu.RemoveFinalizers()
 	_, err = kCLient.V1alpha1().Qemu().Patch(qemu)
 	if err != nil {
