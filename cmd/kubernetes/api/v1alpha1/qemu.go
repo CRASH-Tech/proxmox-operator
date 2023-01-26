@@ -6,6 +6,7 @@ const (
 	STATUS_DEPLOY_EMPTY      = ""
 	STATUS_DEPLOY_PROCESSING = "Processing"
 	STATUS_DEPLOY_DEPLOYED   = "Deployed"
+	STATUS_DEPLOY_DELETING   = "Deleting"
 	STATUS_DEPLOY_ERROR      = "Error"
 	STATUS_POWER_ON          = "On"
 	STATUS_POWER_OFF         = "Off"

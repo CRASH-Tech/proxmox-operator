@@ -91,20 +91,63 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 	}
 
 	for _, qemu := range qemus {
-		fmt.Println(qemu.Status)
-		if qemu.Status.Deploy == "" {
-			qemu.Status.Deploy = "Deploying"
-			qemu.Status.Cluster = "test"
-			qemu.RemoveFinalizers()
-			//err := kCLient.V1alpha1().Qemu().Patch(qemu)
-			err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
-			if err != nil {
-				panic(err)
-			}
+		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY && qemu.Metadata.DeletionTimestamp == "" {
+			go createNewQemu(kCLient, pClient, qemu)
 		}
+		if qemu.Metadata.DeletionTimestamp != "" && qemu.Status.Deploy != v1alpha1.STATUS_DEPLOY_DELETING {
+			deleteQemu(kCLient, pClient, qemu)
 
+		}
 	}
 
+}
+
+func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_PROCESSING
+	qemu, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	if err != nil {
+		panic(err)
+	}
+
+	qemuConfig, err := buildQemuConfig(pClient, qemu)
+	if err != nil {
+		panic(err)
+	}
+
+	err = pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().Create(qemuConfig)
+	if err != nil {
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
+		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			panic(err)
+		}
+		panic(err)
+	}
+
+	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
+	_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DELETING
+	_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	if err != nil {
+		panic(err)
+	}
+
+	pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().Delete(qemu.Spec.Vmid)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	fmt.Println("loool")
+	qemu.RemoveFinalizers()
+	_, err = kCLient.V1alpha1().Qemu().Patch(qemu)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func buildQemuConfig(client *proxmox.Client, cr v1alpha1.Qemu) (proxmox.QemuConfig, error) {

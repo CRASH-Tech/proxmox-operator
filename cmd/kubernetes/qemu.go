@@ -7,9 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var(
-	
-)
+var ()
 
 type Qemu struct {
 	client     *Client
@@ -50,30 +48,42 @@ func (qemu *Qemu) GetAll() ([]v1alpha1.Qemu, error) {
 	return result, nil
 }
 
-func (qemu *Qemu) Patch(q v1alpha1.Qemu) error {
+func (qemu *Qemu) Patch(q v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	jsonData, err := json.Marshal(q)
 	if err != nil {
-		return err
+		return v1alpha1.Qemu{}, err
 	}
 
-	_, err = qemu.client.dynamicPatch(qemu.resourceId, q.Metadata.Name, jsonData)
+	resp, err := qemu.client.dynamicPatch(qemu.resourceId, q.Metadata.Name, jsonData)
 	if err != nil {
-		return err
+		return v1alpha1.Qemu{}, err
 	}
 
-	return nil
+	var result v1alpha1.Qemu
+	err = json.Unmarshal(resp, &result)
+	if err != nil {
+		return v1alpha1.Qemu{}, err
+	}
+
+	return result, nil
 }
 
-func (qemu *Qemu) UpdateStatus(q v1alpha1.Qemu) error {
+func (qemu *Qemu) UpdateStatus(q v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	jsonData, err := json.Marshal(q)
 	if err != nil {
-		return err
+		return v1alpha1.Qemu{}, err
 	}
 
-	_, err = qemu.client.dynamicUpdateStatus(qemu.resourceId, q.Metadata.Name, jsonData)
+	resp, err := qemu.client.dynamicUpdateStatus(qemu.resourceId, q.Metadata.Name, jsonData)
 	if err != nil {
-		return err
+		return v1alpha1.Qemu{}, err
 	}
 
-	return nil
+	var result v1alpha1.Qemu
+	err = json.Unmarshal(resp, &result)
+	if err != nil {
+		return v1alpha1.Qemu{}, err
+	}
+
+	return result, nil
 }
