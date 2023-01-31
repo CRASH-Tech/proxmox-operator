@@ -31,9 +31,6 @@ spec:
               description: ServerSpec defines the desired state of Server.
               type: object
               required:
-                - cluster
-                - node
-                - vmid
                 - cpu
                 - memory
               properties:

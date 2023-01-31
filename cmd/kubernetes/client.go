@@ -95,18 +95,6 @@ func (client *Client) dynamicUpdateStatus(resourceId schema.GroupVersionResource
 	}
 
 	return jsonData, nil
-
-	// item, err := client.dynamic.Resource(resourceId).Patch(client.ctx, name, types.MergePatchType, patch, metav1.PatchOptions{})
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// jsonData, err := item.MarshalJSON()
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// return jsonData, nil
 }
 
 func (client *Client) V1alpha1() *V1alpha1 {

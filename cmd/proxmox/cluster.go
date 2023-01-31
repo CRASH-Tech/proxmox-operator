@@ -10,19 +10,20 @@ import (
 )
 
 const (
-	ResourceQemu    = "qemu"
-	ResourceLXC     = "lxc"
-	ResourceOpenVZ  = "openvz"
-	ResourceStorage = "storage"
-	ResourceNode    = "node"
-	ResourceSDN     = "sdn"
-	ResourcePool    = "pool"
+	RESOURCE_QEMU    = "qemu"
+	RESOURCE_LXC     = "lxc"
+	RESOURCE_OPENVZ  = "openvz"
+	RESOURCE_STORAGE = "storage"
+	RESOURCE_NODE    = "node"
+	RESOURCE_SDN     = "sdn"
+	RESOURCE_POOL    = "pool"
 )
 
 type ClusterApiConfig struct {
 	ApiUrl         string `yaml:"api_url"`
 	ApiTokenId     string `yaml:"api_token_id"`
 	ApiTokenSecret string `yaml:"api_token_secret"`
+	Pool           string `yaml:"pool"`
 }
 
 type Cluster struct {
@@ -66,7 +67,7 @@ type Resource struct {
 }
 
 type NodesResp struct {
-	Nodes []Node `json:"data"`
+	Nodes []NodeResp `json:"data"`
 }
 
 type NodeResp struct {
@@ -180,7 +181,7 @@ func (cluster *Cluster) Node(node string) *Node {
 	return &result
 }
 
-func (cluster *Cluster) GetNodes() ([]Node, error) {
+func (cluster *Cluster) GetNodes() ([]NodeResp, error) {
 	apiPath := "/nodes"
 
 	data, err := cluster.GetReq(apiPath, nil)
@@ -195,4 +196,20 @@ func (cluster *Cluster) GetNodes() ([]Node, error) {
 	}
 
 	return nodesData.Nodes, err
+}
+
+func (cluster *Cluster) GetResourceCount(resourceType string) (int, error) {
+	resources, err := cluster.GetResources(resourceType)
+	if err != nil {
+		return -1, err
+	}
+
+	var result int
+	for _, r := range resources {
+		if r.Type == resourceType {
+			result++
+		}
+	}
+
+	return result, nil
 }

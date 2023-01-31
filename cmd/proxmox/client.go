@@ -7,20 +7,25 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	NODE_STATUS_ONLINE  = "online"
+	NODE_STATUS_OFFLINE = "offline"
+)
+
 type Client struct {
-	clusters map[string]ClusterApiConfig
+	Clusters map[string]ClusterApiConfig
 }
 
 func NewClient(clusters map[string]ClusterApiConfig) *Client {
 	client := Client{
-		clusters: clusters,
+		Clusters: clusters,
 	}
 
 	return &client
 }
 
 func (client *Client) Cluster(cluster string) *Cluster {
-	apiConfig, isExists := client.clusters[cluster]
+	apiConfig, isExists := client.Clusters[cluster]
 	if !isExists {
 		log.Error("unknown cluster: %s", cluster)
 	}

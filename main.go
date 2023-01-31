@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -106,11 +105,11 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 }
 
 func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
-	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_PROCESSING
-	qemu, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
-	if err != nil {
-		panic(err)
-	}
+	// qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_PROCESSING
+	// qemu, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	qemuConfig, err := buildQemuConfig(pClient, qemu)
 	if err != nil {
@@ -175,19 +174,38 @@ func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1
 
 }
 
-func buildQemuConfig(client *proxmox.Client, cr v1alpha1.Qemu) (proxmox.QemuConfig, error) {
+func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuConfig, error) {
 	result := make(map[string]interface{})
 
-	result["vmid"] = cr.Spec.Vmid
-	result["node"] = cr.Spec.Node
-	result["name"] = cr.Metadata.Name
-	result["cpu"] = cr.Spec.CPU.Type
-	result["sockets"] = cr.Spec.CPU.Sockets
-	result["cores"] = cr.Spec.CPU.Cores
-	result["memory"] = cr.Spec.Memory.Size
-	result["balloon"] = cr.Spec.Memory.Balloon
+	if qemu.Spec.Cluster == "" {
+		if qemu.Spec.Pool == "" {
+			return proxmox.QemuConfig{}, fmt.Errorf("no cluster or pool are set for: %s", qemu.Metadata.Name)
+		}
+		var err error
+		qemu, err = findAvialableCluster(client, qemu)
+		if err != nil {
+			panic(err)
+		}
+	}
 
-	for _, iface := range cr.Spec.Network {
+	if qemu.Spec.Node == "" {
+
+	}
+
+	if qemu.Spec.Vmid == 0 {
+
+	}
+
+	result["vmid"] = qemu.Spec.Vmid
+	result["node"] = qemu.Spec.Node
+	result["name"] = qemu.Metadata.Name
+	result["cpu"] = qemu.Spec.CPU.Type
+	result["sockets"] = qemu.Spec.CPU.Sockets
+	result["cores"] = qemu.Spec.CPU.Cores
+	result["memory"] = qemu.Spec.Memory.Size
+	result["balloon"] = qemu.Spec.Memory.Balloon
+
+	for _, iface := range qemu.Spec.Network {
 		if iface.Mac == "" {
 			result[iface.Name] = fmt.Sprintf("model=%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
 		} else {
@@ -195,31 +213,71 @@ func buildQemuConfig(client *proxmox.Client, cr v1alpha1.Qemu) (proxmox.QemuConf
 		}
 	}
 
-	for _, disk := range cr.Spec.Disk {
+	for _, disk := range qemu.Spec.Disk {
 		r := regexp.MustCompile(`^[a-z]+(\d+)$`)
 		diskNum := r.FindStringSubmatch(disk.Name)
 		if len(diskNum) != 2 {
-			return nil, errors.New(fmt.Sprintf("cannot extract disk num: %s", disk.Name))
+			return nil, fmt.Errorf("cannot extract disk num: %s", disk.Name)
 		}
-		filename := fmt.Sprintf("vm-%d-disk-%s", cr.Spec.Vmid, diskNum[1])
-		fmt.Println(filename)
+		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Spec.Vmid, diskNum[1])
 		storageConfig := proxmox.StorageConfig{
-			Node:     cr.Spec.Node,
-			VmId:     cr.Spec.Vmid,
+			Node:     qemu.Spec.Node,
+			VmId:     qemu.Spec.Vmid,
 			Filename: filename,
 			Size:     disk.Size,
 			Storage:  disk.Storage,
 		}
-		err := client.Cluster(cr.Spec.Cluster).Node(cr.Spec.Node).StorageCreate(storageConfig)
+		err := client.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).StorageCreate(storageConfig)
 		if err != nil {
 			panic(err)
 		}
-		result[disk.Name] = fmt.Sprintf("%s:%s,size=%s", disk.Storage, "vm-222-disk-0", disk.Size)
+		result[disk.Name] = fmt.Sprintf("%s:%s,size=%s", disk.Storage, filename, disk.Size)
 	}
 
-	for k, v := range cr.Spec.Options {
+	for k, v := range qemu.Spec.Options {
 		result[k] = v
 	}
 
 	return result, nil
+}
+
+type PlaceCandidate struct {
+	Cluster   string
+	Node      string
+	QemuCount int
+}
+
+func findAvialableCluster(client *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+	//var candidate PlaceCandidate
+
+	for cluster, clusterData := range client.Clusters {
+		var c PlaceCandidate
+		c.Cluster = cluster
+
+		if clusterData.Pool == qemu.Spec.Pool {
+			nodes, err := client.Cluster(cluster).GetResources(proxmox.RESOURCE_NODE)
+			if err != nil {
+				return qemu, err
+			}
+
+			for _, node := range nodes {
+				fmt.Println("node")
+				fmt.Println(client.Cluster(cluster).Node(node.Node).GetResourceCount(proxmox.RESOURCE_QEMU))
+				fmt.Println("cluster")
+				fmt.Println(client.Cluster(cluster).GetResourceCount(proxmox.RESOURCE_QEMU))
+			}
+		}
+	}
+	return qemu, nil
+
+	// fmt.Println("lol")
+	// resources, err := client.GetPoolResources("prod")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// for _, resource := range resources {
+	// 	fmt.Println(resource)
+	// }
+	//return v1alpha1.Qemu{}, nil
 }
