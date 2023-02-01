@@ -2,6 +2,7 @@ package proxmox
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
@@ -43,4 +44,29 @@ func (client *Client) Cluster(cluster string) *Cluster {
 	return &result
 }
 
-//GetPlacableCluster
+func (client *Client) GetQemuPlacableCluster(cpu, mem int) (string, string, error) {
+	qemuCount := make(map[string]int)
+	for cluster, _ := range client.Clusters {
+		if count, err := client.Cluster(cluster).GetResourceCount(RESOURCE_QEMU); err == nil {
+			qemuCount[cluster] = count
+		}
+	}
+
+	keys := make([]string, 0, len(qemuCount))
+	for k := range qemuCount {
+		keys = append(keys, k)
+	}
+
+	sort.SliceStable(keys, func(i, j int) bool {
+		return qemuCount[keys[i]] < qemuCount[keys[j]]
+	})
+
+	for _, cluster := range keys {
+		if node, err := client.Cluster(cluster).GetQemuPlacableNode(cpu, mem); err == nil && node != "" {
+			return cluster, node, nil
+		}
+
+	}
+
+	return "", "", nil
+}

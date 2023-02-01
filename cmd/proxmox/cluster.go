@@ -3,6 +3,7 @@ package proxmox
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/go-resty/resty/v2"
@@ -237,28 +238,37 @@ func (cluster *Cluster) GetResourceCount(resourceType string) (int, error) {
 	return result, nil
 }
 
-// func (node *Node) IsQemuPlacable(cpu, mem int) (string, error) {
-// 	nodes, err := cluster.GetResources(RESOURCE_NODE)
-// 	if err != nil {
-// 		return "", err
-// 	}
+func (cluster *Cluster) GetQemuPlacableNode(cpu, mem int) (string, error) {
+	nodes, err := cluster.GetNodes()
+	if err != nil {
+		return "", err
+	}
 
-// 	qemuCount := make(map[string]int)
+	qemuCount := make(map[string]int)
+	for _, node := range nodes {
+		count, err := cluster.Node(node.Node).GetResourceCount(RESOURCE_QEMU)
+		if err != nil {
+			return "", err
+		}
+		qemuCount[node.Node] = count
+	}
 
-// 	for _, node := range nodes {
-// 		count, err := cluster.Node(node.Node).GetResourceCount(RESOURCE_QEMU)
-// 		if err != nil {
-// 			return "", err
-// 		}
+	keys := make([]string, 0, len(qemuCount))
+	for k := range qemuCount {
+		keys = append(keys, k)
+	}
 
-// 		qemuCount[node.Node] = count
+	sort.SliceStable(keys, func(i, j int) bool {
+		return qemuCount[keys[i]] < qemuCount[keys[j]]
+	})
 
-// 		if (float64(node.Maxcpu)-node.CPU) > float64(cpu) && (node.Maxmem-node.Mem) > int64(mem) {
-// 			return "", nil
-// 		}
-// 	}
+	for _, n := range keys {
+		if placable, err := cluster.Node(n).IsQemuPlacable(cpu, mem); err == nil {
+			if placable {
+				return n, nil
+			}
+		}
+	}
 
-// 	return "", nil
-// }
-
-//GetPlacableNode()
+	return "", nil
+}

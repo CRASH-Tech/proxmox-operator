@@ -271,7 +271,7 @@ func findAvialableCluster(client *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.
 	// }
 	//common.SortMapStrintIntRev(m)
 
-	fmt.Println(client.Cluster("crash-lab").Node("crash-lab").IsQemuPlacable(47, 300099577344))
+	fmt.Println(client.GetQemuPlacableCluster(1, 1))
 
 	return v1alpha1.Qemu{}, fmt.Errorf("fdfdf")
 }
