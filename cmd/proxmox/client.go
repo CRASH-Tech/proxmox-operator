@@ -42,3 +42,5 @@ func (client *Client) Cluster(cluster string) *Cluster {
 
 	return &result
 }
+
+//GetPlacableCluster

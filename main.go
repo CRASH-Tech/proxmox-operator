@@ -241,43 +241,37 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 	return result, nil
 }
 
-type PlaceCandidate struct {
-	Cluster   string
-	Node      string
-	QemuCount int
-}
-
 func findAvialableCluster(client *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	//var candidate PlaceCandidate
-
-	for cluster, clusterData := range client.Clusters {
-		var c PlaceCandidate
-		c.Cluster = cluster
-
-		if clusterData.Pool == qemu.Spec.Pool {
-			nodes, err := client.Cluster(cluster).GetResources(proxmox.RESOURCE_NODE)
-			if err != nil {
-				return qemu, err
-			}
-
-			for _, node := range nodes {
-				fmt.Println("node")
-				fmt.Println(client.Cluster(cluster).Node(node.Node).GetResourceCount(proxmox.RESOURCE_QEMU))
-				fmt.Println("cluster")
-				fmt.Println(client.Cluster(cluster).GetResourceCount(proxmox.RESOURCE_QEMU))
-			}
-		}
-	}
-	return qemu, nil
-
-	// fmt.Println("lol")
-	// resources, err := client.GetPoolResources("prod")
-	// if err != nil {
-	// 	panic(err)
+	// m := map[string]int{
+	// 	"hello": 40,
+	// 	"foo":   20,
+	// 	"bar":   65,
+	// 	"lol":   3,
+	// 	"pol":   99,
+	// 	"vika":  999,
 	// }
 
-	// for _, resource := range resources {
-	// 	fmt.Println(resource)
+	///////////////
+	// keys := make([]string, 0, len(m))
+	// for k := range m {
+	// 	keys = append(keys, k)
 	// }
-	//return v1alpha1.Qemu{}, nil
+
+	// sort.SliceStable(keys, func(i, j int) bool {
+	// 	return m[keys[i]] < m[keys[j]]
+	// })
+
+	// for _, k := range keys {
+	// 	fmt.Println(k, m[k])
+	// }
+	//////////////
+
+	// for k, v := range m {
+	// 	fmt.Println(k, v)
+	// }
+	//common.SortMapStrintIntRev(m)
+
+	fmt.Println(client.Cluster("crash-lab").Node("crash-lab").IsQemuPlacable(47, 300099577344))
+
+	return v1alpha1.Qemu{}, fmt.Errorf("fdfdf")
 }

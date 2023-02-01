@@ -44,3 +44,16 @@ func (node *Node) GetResourceCount(resourceType string) (int, error) {
 
 	return result, nil
 }
+
+func (node *Node) IsQemuPlacable(cpu, mem int) (bool, error) {
+	nodeResources, err := node.cluster.GetNode(node.name)
+	if err != nil {
+		return false, err
+	}
+
+	if (float64(nodeResources.Maxcpu)-nodeResources.CPU) > float64(cpu) && (nodeResources.Maxmem-nodeResources.Mem) > int64(mem) {
+		return true, nil
+	}
+
+	return false, nil
+}

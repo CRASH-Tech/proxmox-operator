@@ -198,6 +198,29 @@ func (cluster *Cluster) GetNodes() ([]NodeResp, error) {
 	return nodesData.Nodes, err
 }
 
+func (cluster *Cluster) GetNode(nodeName string) (NodeResp, error) {
+	apiPath := "/nodes"
+
+	data, err := cluster.GetReq(apiPath, nil)
+	if err != nil {
+		return NodeResp{}, err
+	}
+
+	nodesData := NodesResp{}
+	err = json.Unmarshal(data, &nodesData)
+	if err != nil {
+		return NodeResp{}, err
+	}
+
+	for _, node := range nodesData.Nodes {
+		if node.Node == nodeName {
+			return node, nil
+		}
+	}
+
+	return NodeResp{}, err
+}
+
 func (cluster *Cluster) GetResourceCount(resourceType string) (int, error) {
 	resources, err := cluster.GetResources(resourceType)
 	if err != nil {
@@ -213,3 +236,29 @@ func (cluster *Cluster) GetResourceCount(resourceType string) (int, error) {
 
 	return result, nil
 }
+
+// func (node *Node) IsQemuPlacable(cpu, mem int) (string, error) {
+// 	nodes, err := cluster.GetResources(RESOURCE_NODE)
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	qemuCount := make(map[string]int)
+
+// 	for _, node := range nodes {
+// 		count, err := cluster.Node(node.Node).GetResourceCount(RESOURCE_QEMU)
+// 		if err != nil {
+// 			return "", err
+// 		}
+
+// 		qemuCount[node.Node] = count
+
+// 		if (float64(node.Maxcpu)-node.CPU) > float64(cpu) && (node.Maxmem-node.Mem) > int64(mem) {
+// 			return "", nil
+// 		}
+// 	}
+
+// 	return "", nil
+// }
+
+//GetPlacableNode()
