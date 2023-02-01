@@ -17,6 +17,12 @@ type Client struct {
 	Clusters map[string]ClusterApiConfig
 }
 
+type QemuPlace struct {
+	Cluster string
+	Node    string
+	VmId    int
+}
+
 func NewClient(clusters map[string]ClusterApiConfig) *Client {
 	client := Client{
 		Clusters: clusters,
@@ -44,7 +50,7 @@ func (client *Client) Cluster(cluster string) *Cluster {
 	return &result
 }
 
-func (client *Client) GetQemuPlacableCluster(cpu, mem int) (string, string, error) {
+func (client *Client) GetQemuPlacableCluster(cpu, mem int) (QemuPlace, error) {
 	qemuCount := make(map[string]int)
 	for cluster, _ := range client.Clusters {
 		if count, err := client.Cluster(cluster).GetResourceCount(RESOURCE_QEMU); err == nil {
@@ -63,10 +69,18 @@ func (client *Client) GetQemuPlacableCluster(cpu, mem int) (string, string, erro
 
 	for _, cluster := range keys {
 		if node, err := client.Cluster(cluster).GetQemuPlacableNode(cpu, mem); err == nil && node != "" {
-			return cluster, node, nil
+			if vmId, err := client.Cluster(cluster).GetNextId(); err == nil {
+				var result QemuPlace
+
+				result.Cluster = cluster
+				result.Node = node
+				result.VmId = vmId
+
+				return result, nil
+			}
 		}
 
 	}
 
-	return "", "", nil
+	return QemuPlace{}, nil
 }
