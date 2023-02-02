@@ -32,8 +32,8 @@ func (qemu *Qemu) Get(name string) (v1alpha1.Qemu, error) {
 	if result.Spec.Node == "" {
 		result.Spec.Node = result.Status.Node
 	}
-	if result.Spec.Vmid == 0 {
-		result.Spec.Vmid = result.Status.VmId
+	if result.Spec.VmId == 0 {
+		result.Spec.VmId = result.Status.VmId
 	}
 
 	return result, nil
@@ -58,8 +58,8 @@ func (qemu *Qemu) GetAll() ([]v1alpha1.Qemu, error) {
 		if q.Spec.Node == "" {
 			q.Spec.Node = q.Status.Node
 		}
-		if q.Spec.Vmid == 0 {
-			q.Spec.Vmid = q.Status.VmId
+		if q.Spec.VmId == 0 {
+			q.Spec.VmId = q.Status.VmId
 		}
 		result = append(result, q)
 	}

@@ -117,7 +117,7 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
 		qemu.Status.Cluster = qemu.Spec.Cluster
 		qemu.Status.Node = qemu.Spec.Node
-		qemu.Status.VmId = qemu.Spec.Vmid
+		qemu.Status.VmId = qemu.Spec.VmId
 		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
 			log.Error(err)
@@ -130,7 +130,7 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
 	qemu.Status.Cluster = qemu.Spec.Cluster
 	qemu.Status.Node = qemu.Spec.Node
-	qemu.Status.VmId = qemu.Spec.Vmid
+	qemu.Status.VmId = qemu.Spec.VmId
 	_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		log.Error(err)
@@ -146,7 +146,7 @@ func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 		return
 	}
 
-	pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().Delete(qemu.Spec.Vmid)
+	pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().Delete(qemu.Spec.VmId)
 	if err != nil {
 		log.Error(err)
 		return
@@ -161,7 +161,7 @@ func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 }
 
 func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
-	qemuStatus, err := pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().GetStatus(qemu.Spec.Vmid)
+	qemuStatus, err := pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().GetStatus(qemu.Spec.VmId)
 	if err != nil {
 		log.Error(err)
 		return
@@ -204,11 +204,11 @@ func buildQemuConfig(client *proxmox.Client, qemu *v1alpha1.Qemu) (proxmox.QemuC
 		qemu.Spec.Node = place.Node
 	}
 
-	if qemu.Spec.Vmid == 0 {
-		qemu.Spec.Vmid = place.VmId
+	if qemu.Spec.VmId == 0 {
+		qemu.Spec.VmId = place.VmId
 	}
 
-	result["vmid"] = qemu.Spec.Vmid
+	result["VmId"] = qemu.Spec.VmId
 	result["node"] = qemu.Spec.Node
 	result["name"] = qemu.Metadata.Name
 	result["cpu"] = qemu.Spec.CPU.Type
@@ -231,10 +231,10 @@ func buildQemuConfig(client *proxmox.Client, qemu *v1alpha1.Qemu) (proxmox.QemuC
 		if len(diskNum) != 2 {
 			return nil, fmt.Errorf("cannot extract disk num: %s", disk.Name)
 		}
-		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Spec.Vmid, diskNum[1])
+		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Spec.VmId, diskNum[1])
 		storageConfig := proxmox.StorageConfig{
 			Node:     qemu.Spec.Node,
-			VmId:     qemu.Spec.Vmid,
+			VmId:     qemu.Spec.VmId,
 			Filename: filename,
 			Size:     disk.Size,
 			Storage:  disk.Storage,
