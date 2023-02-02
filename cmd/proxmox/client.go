@@ -82,5 +82,5 @@ func (client *Client) GetQemuPlacableCluster(cpu, mem int) (QemuPlace, error) {
 
 	}
 
-	return QemuPlace{}, nil
+	return QemuPlace{}, fmt.Errorf("cannot find avialable cluster")
 }

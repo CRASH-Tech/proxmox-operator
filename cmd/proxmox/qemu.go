@@ -143,6 +143,7 @@ func (qemu *Qemu) Stop(vmId int) error {
 
 func (qemu *Qemu) GetStatus(vmId int) (QemuStatus, error) {
 	log.Infof("Get qemu VM status, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
 

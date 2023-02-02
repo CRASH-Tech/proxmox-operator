@@ -270,5 +270,5 @@ func (cluster *Cluster) GetQemuPlacableNode(cpu, mem int) (string, error) {
 		}
 	}
 
-	return "", nil
+	return "", fmt.Errorf("cannot find avialable node")
 }
