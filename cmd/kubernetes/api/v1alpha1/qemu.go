@@ -20,10 +20,10 @@ type Qemu struct {
 }
 
 type QemuSpec struct {
-	Cluster string                 `json:"cluster"`
-	Node    string                 `json:"node"`
-	Pool    string                 `json:"pool"`
-	Vmid    int                    `json:"vmid"`
+	// Cluster string                 `json:"cluster"`
+	// Node    string                 `json:"node"`
+	Pool string `json:"pool"`
+	//Vmid    int                    `json:"vmid"`
 	CPU     QemuCPU                `json:"cpu"`
 	Memory  QemuMemory             `json:"memory"`
 	Disk    []QemuDisk             `json:"disk"`

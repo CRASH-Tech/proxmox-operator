@@ -87,6 +87,7 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 	qemus, err := kCLient.V1alpha1().Qemu().GetAll()
 	if err != nil {
 		log.Error(err)
+		return
 	}
 
 	for _, qemu := range qemus {
@@ -105,15 +106,10 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 }
 
 func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
-	// qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_PROCESSING
-	// qemu, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
-	// if err != nil {
-	// 	log.Error(err)
-	// }
-
 	qemuConfig, err := buildQemuConfig(pClient, &qemu)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 
 	err = pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().Create(qemuConfig)
@@ -125,8 +121,10 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
 			log.Error(err)
+			return
 		}
 		log.Error(err)
+		return
 	}
 
 	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
@@ -136,6 +134,7 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 }
 
@@ -144,35 +143,28 @@ func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 	qemu, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 
 	pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().Delete(qemu.Spec.Vmid)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 
-	qemu.RemoveFinalizers()
-	_, err = kCLient.V1alpha1().Qemu().Patch(qemu)
-	if err != nil {
-		log.Error(err)
-	}
+	// qemu.RemoveFinalizers()
+	// _, err = kCLient.V1alpha1().Qemu().Patch(qemu)
+	// if err != nil {
+	// 	log.Error(err)
+	// 	return
+	// }
 }
 
 func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
-
-	if qemu.Spec.Cluster == "" {
-		qemu.Spec.Cluster = qemu.Status.Cluster
-	}
-	if qemu.Spec.Node == "" {
-		qemu.Spec.Node = qemu.Status.Node
-	}
-	if qemu.Spec.Vmid == 0 {
-		qemu.Spec.Vmid = qemu.Status.VmId
-	}
-
 	qemuStatus, err := pClient.Cluster(qemu.Spec.Cluster).Node(qemu.Spec.Node).Qemu().GetStatus(qemu.Spec.Vmid)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 
 	if qemuStatus.Data.Status == proxmox.STATUS_RUNNING {
@@ -186,6 +178,7 @@ func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1
 	_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 	fmt.Println(qemuStatus)
 
