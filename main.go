@@ -108,6 +108,11 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 }
 
 func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+	if qemu.Spec.Cluster == "" && qemu.Spec.Pool == "" {
+		log.Error("no cluster or pool are set for: %s", qemu.Metadata.Name)
+		return
+	}
+
 	var place proxmox.QemuPlace
 	if qemu.Spec.Pool != "" {
 		var err error
@@ -118,11 +123,6 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	}
 
 	if qemu.Spec.Cluster == "" {
-		if qemu.Spec.Pool == "" {
-			log.Error("no cluster or pool are set for: %s", qemu.Metadata.Name)
-			return
-		}
-
 		qemu.Status.Cluster = place.Cluster
 	} else {
 		qemu.Status.Cluster = qemu.Spec.Cluster
