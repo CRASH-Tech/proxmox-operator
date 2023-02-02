@@ -191,7 +191,6 @@ func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1
 		log.Error(err)
 		return
 	}
-
 	if qemuStatus.Data.Status == proxmox.STATUS_RUNNING {
 		qemu.Status.Power = v1alpha1.STATUS_POWER_ON
 	} else if qemuStatus.Data.Status == proxmox.STATUS_STOPPED {
@@ -199,6 +198,27 @@ func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1
 	} else {
 		qemu.Status.Power = v1alpha1.STATUS_POWER_UNKNOWN
 	}
+
+	qemuConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	var ifacesConfig []v1alpha1.QemuStatusNetwork
+	rExp := "(.{2}:.{2}:.{2}:.{2}:.{2}:.{2})"
+	r := regexp.MustCompile(rExp)
+	for _, iface := range qemu.Spec.Network {
+		var ifaceConfig v1alpha1.QemuStatusNetwork
+		ifaceConfig.Name = iface.Name
+		macData := r.FindStringSubmatch(fmt.Sprintf("%s", qemuConfig[iface.Name]))
+		if len(macData) > 0 {
+			ifaceConfig.Mac = macData[0]
+		}
+
+		ifacesConfig = append(ifacesConfig, ifaceConfig)
+	}
+	qemu.Status.Net = ifacesConfig
 
 	_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {

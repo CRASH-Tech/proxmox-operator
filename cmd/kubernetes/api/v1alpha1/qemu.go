@@ -22,7 +22,7 @@ type Qemu struct {
 type QemuSpec struct {
 	Cluster string                 `json:"cluster"`
 	Node    string                 `json:"node"`
-	Pool string `json:"pool"`
+	Pool    string                 `json:"pool"`
 	VmId    int                    `json:"vmid"`
 	CPU     QemuCPU                `json:"cpu"`
 	Memory  QemuMemory             `json:"memory"`
@@ -57,13 +57,15 @@ type QemuNetwork struct {
 }
 
 type QemuStatus struct {
-	Deploy  string `json:"deploy"`
-	Power   string `json:"power"`
-	Cluster string `json:"cluster"`
-	Node    string `json:"node"`
-	VmId    int    `json:"vmid"`
-	Net     map[string]struct {
-		Interface string `json:"interface"`
-		Mac       string `json:"mac"`
-	} `json:"net"`
+	Deploy  string              `json:"deploy"`
+	Power   string              `json:"power"`
+	Cluster string              `json:"cluster"`
+	Node    string              `json:"node"`
+	VmId    int                 `json:"vmid"`
+	Net     []QemuStatusNetwork `json:"net"`
+}
+
+type QemuStatusNetwork struct {
+	Name string `json:"name"`
+	Mac  string `json:"mac"`
 }

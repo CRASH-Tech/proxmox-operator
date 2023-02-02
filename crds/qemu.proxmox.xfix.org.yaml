@@ -106,7 +106,7 @@ spec:
                   items:
                     type: object
                     properties:
-                      interface:
+                      name:
                         type: string
                       mac:
                         type: string

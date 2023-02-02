@@ -16,6 +16,10 @@ type Qemu struct {
 	node *Node
 }
 
+type QemuConfigResp struct {
+	Data QemuConfig `json:"data"`
+}
+
 type (
 	QemuConfig map[string]interface{}
 )
@@ -97,13 +101,13 @@ func (qemu *Qemu) GetConfig(vmId int) (QemuConfig, error) {
 		return nil, err
 	}
 
-	qemuConfig := QemuConfig{}
+	qemuConfig := QemuConfigResp{}
 	err = json.Unmarshal(qemuConfigData, &qemuConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return qemuConfig, nil
+	return qemuConfig.Data, nil
 }
 
 func (qemu *Qemu) Delete(vmId int) error {
