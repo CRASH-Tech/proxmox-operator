@@ -109,19 +109,23 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 
 func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
 	var place proxmox.QemuPlace
+	if qemu.Spec.Pool != "" {
+		var err error
+		place, err = pClient.GetQemuPlacableCluster((qemu.Spec.CPU.Cores * qemu.Spec.CPU.Sockets), qemu.Spec.Memory.Size)
+		if err != nil {
+			log.Error("cannot find autoplace cluster:", err)
+		}
+	}
+
 	if qemu.Spec.Cluster == "" {
 		if qemu.Spec.Pool == "" {
 			log.Error("no cluster or pool are set for: %s", qemu.Metadata.Name)
 			return
 		}
 
-		var err error
-		place, err = pClient.GetQemuPlacableCluster((qemu.Spec.CPU.Cores * qemu.Spec.CPU.Sockets), qemu.Spec.Memory.Size)
-		if err != nil {
-			log.Error(err)
-			return
-		}
 		qemu.Status.Cluster = place.Cluster
+	} else {
+		qemu.Status.Cluster = qemu.Spec.Cluster
 	}
 
 	if qemu.Spec.Node == "" {

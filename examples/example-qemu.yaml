@@ -5,7 +5,7 @@ metadata:
   finalizers:
     - resources-finalizer.proxmox-operator.xfix.org
 spec:
-  cluster: crash-lab
+  #cluster: crash-lab
   #node: crash-lab
   #vmid: 222
   pool: prod
