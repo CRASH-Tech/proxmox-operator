@@ -31,9 +31,15 @@ spec:
               description: ServerSpec defines the desired state of Server.
               type: object
               required:
+                - autostart
+                - autostop
                 - cpu
                 - memory
               properties:
+                autostart:
+                  type: boolean
+                autostop:
+                  type: boolean
                 cluster:
                   type: string
                 node:

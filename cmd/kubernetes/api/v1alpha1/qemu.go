@@ -20,15 +20,17 @@ type Qemu struct {
 }
 
 type QemuSpec struct {
-	Cluster string                 `json:"cluster"`
-	Node    string                 `json:"node"`
-	Pool    string                 `json:"pool"`
-	VmId    int                    `json:"vmid"`
-	CPU     QemuCPU                `json:"cpu"`
-	Memory  QemuMemory             `json:"memory"`
-	Disk    []QemuDisk             `json:"disk"`
-	Network []QemuNetwork          `json:"network"`
-	Options map[string]interface{} `json:"options"`
+	Autostart bool                   `json:"autostart"`
+	Autostop  bool                   `json:"autostop"`
+	Cluster   string                 `json:"cluster"`
+	Node      string                 `json:"node"`
+	Pool      string                 `json:"pool"`
+	VmId      int                    `json:"vmid"`
+	CPU       QemuCPU                `json:"cpu"`
+	Memory    QemuMemory             `json:"memory"`
+	Disk      []QemuDisk             `json:"disk"`
+	Network   []QemuNetwork          `json:"network"`
+	Options   map[string]interface{} `json:"options"`
 }
 
 type QemuCPU struct {

@@ -134,7 +134,7 @@ func (qemu *Qemu) Start(vmId int) error {
 }
 
 func (qemu *Qemu) Stop(vmId int) error {
-	log.Infof("Starting qemu VM, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	log.Infof("Stopping qemu VM, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/stop", qemu.node.name, vmId)
 	err := qemu.node.cluster.PostReq(apiPath, data)

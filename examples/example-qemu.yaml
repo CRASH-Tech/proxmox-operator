@@ -9,6 +9,8 @@ spec:
   #node: crash-lab
   #vmid: 222
   pool: prod
+  autostart: true
+  autostop: true
   cpu:
     type: host
     sockets: 2
