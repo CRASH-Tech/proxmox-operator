@@ -108,6 +108,19 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 }
 
 func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+	if place, _ := pClient.GetQemuPlaca(qemu.Metadata.Name); place.Cluster != "" {
+		log.Info("Qemu already exist, skip creation:", place)
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
+		qemu.Status.Cluster = place.Cluster
+		qemu.Status.Node = place.Node
+		qemu.Status.VmId = place.VmId
+		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			log.Error(err)
+		}
+		return
+	}
+
 	if qemu.Spec.Cluster == "" && qemu.Spec.Pool == "" {
 		log.Error("no cluster or pool are set for: %s", qemu.Metadata.Name)
 		return
@@ -129,13 +142,23 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	}
 
 	if qemu.Spec.Node == "" {
-		qemu.Status.Node = place.Node
+		node, err := pClient.Cluster(qemu.Status.Cluster).GetQemuPlacableNode((qemu.Spec.CPU.Cores * qemu.Spec.CPU.Sockets), qemu.Spec.Memory.Size)
+		if err != nil {
+			log.Error("cannot find avialable node:", err)
+			return
+		}
+		qemu.Status.Node = node
 	} else {
 		qemu.Status.Node = qemu.Spec.Node
 	}
 
 	if qemu.Spec.VmId == 0 {
-		qemu.Status.VmId = place.VmId
+		nextId, err := pClient.Cluster(qemu.Status.Cluster).GetNextId()
+		if err != nil {
+			log.Error("cannot get qemu next id:", err)
+			return
+		}
+		qemu.Status.VmId = nextId
 	} else {
 		qemu.Status.VmId = qemu.Spec.VmId
 	}
@@ -201,6 +224,17 @@ func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 }
 
 func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+	if place, _ := pClient.GetQemuPlaca(qemu.Metadata.Name); place.Cluster != "" {
+		qemu.Status.Cluster = place.Cluster
+		qemu.Status.Node = place.Node
+		qemu.Status.VmId = place.VmId
+		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+	}
+
 	qemuStatus, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetStatus(qemu.Status.VmId)
 	if err != nil {
 		log.Error(err)

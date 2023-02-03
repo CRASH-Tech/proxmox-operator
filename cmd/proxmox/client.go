@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"crypto/tls"
 	"fmt"
 	"sort"
 
@@ -38,6 +39,7 @@ func (client *Client) Cluster(cluster string) *Cluster {
 	}
 
 	restyClient := resty.New()
+	restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	restyClient.SetHeader("Content-Type", "application/json")
 	restyClient.SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", apiConfig.ApiTokenId, apiConfig.ApiTokenSecret))
 
@@ -83,4 +85,25 @@ func (client *Client) GetQemuPlacableCluster(cpu, mem int) (QemuPlace, error) {
 	}
 
 	return QemuPlace{}, fmt.Errorf("cannot find avialable cluster")
+}
+
+func (client *Client) GetQemuPlaca(name string) (QemuPlace, error) {
+	var place QemuPlace
+	for cluster, _ := range client.Clusters {
+		resources, err := client.Cluster(cluster).GetResources(RESOURCE_QEMU)
+		if err != nil {
+			return place, err
+		}
+
+		for _, resource := range resources {
+			if resource.Name == name {
+				place.Cluster = cluster
+				place.Node = resource.Node
+				place.VmId = resource.Vmid
+				return place, nil
+			}
+
+		}
+	}
+	return place, nil
 }

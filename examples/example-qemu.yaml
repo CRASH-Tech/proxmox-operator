@@ -5,7 +5,7 @@ metadata:
   finalizers:
     - resources-finalizer.proxmox-operator.xfix.org
 spec:
-  #cluster: crash-lab
+  cluster: pve-test
   #node: crash-lab
   #vmid: 222
   pool: prod
@@ -16,18 +16,26 @@ spec:
     sockets: 2
     cores: 2
   memory:
-    size: 8192
-    balloon: 8192
+    size: 2048
+    balloon: 2048
   network:
     - name: net0
       model: virtio
-      mac: A2:7B:45:48:9C:E6
+      #mac: A2:7B:45:48:9C:E6
       bridge: vmbr0
       tag: 103
+    # - name: net1
+    #   model: virtio
+    #   #mac: A2:7B:45:48:9C:E6
+    #   bridge: vmbr0
+    #   tag: 104
   disk:
     - name: scsi0
       storage: local-lvm
-      size: 32G
+      size: 2G
+    # - name: scsi1
+    #   storage: local-lvm
+    #   size: 32G
   options:
     ostype: "l26"
     bios: "seabios"

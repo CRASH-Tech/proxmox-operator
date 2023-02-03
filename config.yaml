@@ -1,6 +1,16 @@
 clusters:
-  crash-lab:
-    api_url: https://crash-lab.uis.st/api2/json
+  # crash-lab:
+  #   api_url: https://crash-lab.uis.st/api2/json
+  #   api_token_id: root@pam!test
+  #   api_token_secret: 4f718e55-d6a4-4840-a548-193a6c84fece
+  #   pool: prod
+  # c5:
+  #   api_url: https://c5n1.uis.st/api2/json
+  #   api_token_id: root@pam!test
+  #   api_token_secret: 37ce9837-bece-4d6d-8ea8-68a1267f882a
+  #   pool: prod
+  pve-test:
+    api_url: https://10.1.24.10:8006/api2/json
     api_token_id: root@pam!test
-    api_token_secret: 4f718e55-d6a4-4840-a548-193a6c84fece
+    api_token_secret: 9723a534-12eb-4956-8bdc-726f936d9f77
     pool: prod

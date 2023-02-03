@@ -105,13 +105,15 @@ func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error)
 func (cluster *Cluster) PostReq(apiPath string, data interface{}) error {
 	resp, err := cluster.resty.R().
 		SetBody(data).
+		SetHeader("Accept", "application/json").
+		SetHeader("Content-Type", "application/json").
 		Post(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
 	if err != nil {
 		return err
 	}
 
 	if resp.IsError() {
-		return fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
+		return fmt.Errorf("proxmox api error: %d %s %s", resp.StatusCode(), resp.Status(), resp.Body())
 	}
 
 	return nil
