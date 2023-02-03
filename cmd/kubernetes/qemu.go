@@ -26,16 +26,6 @@ func (qemu *Qemu) Get(name string) (v1alpha1.Qemu, error) {
 		return v1alpha1.Qemu{}, err
 	}
 
-	if result.Spec.Cluster == "" {
-		result.Spec.Cluster = result.Status.Cluster
-	}
-	if result.Spec.Node == "" {
-		result.Spec.Node = result.Status.Node
-	}
-	if result.Spec.VmId == 0 {
-		result.Spec.VmId = result.Status.VmId
-	}
-
 	return result, nil
 }
 
@@ -52,15 +42,7 @@ func (qemu *Qemu) GetAll() ([]v1alpha1.Qemu, error) {
 		if err != nil {
 			return nil, err
 		}
-		if q.Spec.Cluster == "" {
-			q.Spec.Cluster = q.Status.Cluster
-		}
-		if q.Spec.Node == "" {
-			q.Spec.Node = q.Status.Node
-		}
-		if q.Spec.VmId == 0 {
-			q.Spec.VmId = q.Status.VmId
-		}
+
 		result = append(result, q)
 	}
 

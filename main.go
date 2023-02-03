@@ -93,15 +93,12 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 	for _, qemu := range qemus {
 		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY && qemu.Metadata.DeletionTimestamp == "" {
 			createNewQemu(kCLient, pClient, qemu)
-			return
-		}
-		if qemu.Metadata.DeletionTimestamp != "" {
-			deleteQemu(kCLient, pClient, qemu)
-			return
 		}
 		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_DEPLOYED {
 			syncQemu(kCLient, pClient, qemu)
-			return
+		}
+		if qemu.Metadata.DeletionTimestamp != "" {
+			deleteQemu(kCLient, pClient, qemu)
 		}
 	}
 
@@ -194,6 +191,15 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 }
 
 func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+	if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY {
+		qemu.RemoveFinalizers()
+		_, err := kCLient.V1alpha1().Qemu().Patch(qemu)
+		if err != nil {
+			log.Error(err)
+		}
+		return
+	}
+
 	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DELETING
 	qemu, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
