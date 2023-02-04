@@ -14,7 +14,7 @@ spec:
   cpu:
     type: host
     sockets: 2
-    cores: 2
+    cores: 1
   memory:
     size: 2048
     balloon: 2048

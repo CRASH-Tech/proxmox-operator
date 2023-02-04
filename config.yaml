@@ -1,3 +1,4 @@
+debug: 0
 clusters:
   # crash-lab:
   #   api_url: https://crash-lab.uis.st/api2/json

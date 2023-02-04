@@ -6,6 +6,7 @@ import (
 )
 
 type Config struct {
+	Debug         int                                 `yaml:"debug"`
 	Clusters      map[string]proxmox.ClusterApiConfig `yaml:"clusters"`
 	DynamicClient *dynamic.DynamicClient
 }

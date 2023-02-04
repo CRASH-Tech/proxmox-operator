@@ -94,14 +94,14 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY && qemu.Metadata.DeletionTimestamp == "" {
 			err = createNewQemu(kCLient, pClient, qemu)
 			if err != nil {
-				log.Error("cannot create qemu vm %s", qemu.Metadata.Name, err)
+				log.Errorf("cannot create qemu vm %s", qemu.Metadata.Name, err)
 			}
 			return
 		}
 		if qemu.Metadata.DeletionTimestamp != "" {
 			err = deleteQemu(kCLient, pClient, qemu)
 			if err != nil {
-				log.Error("cannot delete qemu vm %s", qemu.Metadata.Name, err)
+				log.Errorf("cannot delete qemu vm %s", qemu.Metadata.Name, err)
 			}
 			return
 		}
@@ -113,17 +113,17 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 
 		qemu, err = syncQemuPowerStatus(kCLient, pClient, qemu)
 		if err != nil {
-			log.Error("cannot sync qemu power status", err)
+			log.Errorf("cannot sync qemu power status", err)
 		}
 
 		qemu, err = syncQemuNetStatus(kCLient, pClient, qemu)
 		if err != nil {
-			log.Error("cannot sync qemu network status", err)
+			log.Errorf("cannot sync qemu network status", err)
 		}
 
 		qemu, err = syncQemuDeployStatus(kCLient, pClient, qemu)
 		if err != nil {
-			log.Error("cannot sync qemu deploy status", err)
+			log.Errorf("cannot sync qemu deploy status", err)
 		}
 
 	}
@@ -282,7 +282,28 @@ func deleteQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 }
 
 func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	fmt.Println(pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetPendingConfig(qemu.Status.VmId))
+	pendingConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetPendingConfig(qemu.Status.VmId)
+	if err != nil {
+		return qemu, fmt.Errorf("cannot get pending config: %s", err)
+	}
+
+	var isPending bool
+	for _, v := range pendingConfig {
+		if v.Pending != nil {
+			log.Infof("Qemu %s is in pending state, %s: %v != %v", qemu.Metadata.Name, v.Key, v.Value, v.Pending)
+			isPending = true
+		}
+	}
+
+	if isPending {
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_PENDING
+		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			return qemu, err
+		}
+
+		return qemu, nil
+	}
 
 	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
 	if err != nil {
