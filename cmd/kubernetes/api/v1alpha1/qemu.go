@@ -4,13 +4,13 @@ import "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api"
 
 const (
 	STATUS_DEPLOY_EMPTY      = ""
-	STATUS_DEPLOY_PROCESSING = "Processing"
-	STATUS_DEPLOY_DEPLOYED   = "Deployed"
-	STATUS_DEPLOY_DELETING   = "Deleting"
-	STATUS_DEPLOY_ERROR      = "Error"
-	STATUS_POWER_ON          = "On"
-	STATUS_POWER_OFF         = "Off"
-	STATUS_POWER_UNKNOWN     = "Unknown"
+	STATUS_DEPLOY_NOT_SYNCED = "OUT OF SYNC"
+	STATUS_DEPLOY_DEPLOYED   = "DEPLOYED"
+	STATUS_DEPLOY_DELETING   = "DELETING"
+	STATUS_DEPLOY_ERROR      = "ERROR"
+	STATUS_POWER_ON          = "ON"
+	STATUS_POWER_OFF         = "OFF"
+	STATUS_POWER_UNKNOWN     = "UNKNOWN"
 )
 
 type Qemu struct {

@@ -93,12 +93,17 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 	for _, qemu := range qemus {
 		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY && qemu.Metadata.DeletionTimestamp == "" {
 			createNewQemu(kCLient, pClient, qemu)
-		}
-		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_DEPLOYED {
-			syncQemu(kCLient, pClient, qemu)
+			return
 		}
 		if qemu.Metadata.DeletionTimestamp != "" {
 			deleteQemu(kCLient, pClient, qemu)
+			return
+		}
+		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_DEPLOYED {
+			syncQemuStatus(kCLient, pClient, qemu)
+		}
+		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_NOT_SYNCED {
+			syncQemuConfig(kCLient, pClient, qemu)
 		}
 	}
 
@@ -166,6 +171,29 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 		return
 	}
 
+	for _, disk := range qemu.Spec.Disk {
+		r := regexp.MustCompile(`^[a-z]+(\d+)$`)
+		diskNum := r.FindStringSubmatch(disk.Name)
+		if len(diskNum) != 2 {
+			log.Errorf("cannot extract disk num: %s", disk.Name)
+			return
+		}
+		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Status.VmId, diskNum[1])
+		storageConfig := proxmox.StorageConfig{
+			Node:     qemu.Status.Node,
+			VmId:     qemu.Status.VmId,
+			Filename: filename,
+			Size:     disk.Size,
+			Storage:  disk.Storage,
+		}
+		err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).StorageCreate(storageConfig)
+		if err != nil {
+			log.Error()
+			return
+		}
+		qemuConfig[disk.Name] = fmt.Sprintf("%s:%s,size=%s", disk.Storage, filename, disk.Size)
+	}
+
 	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Create(qemuConfig)
 	if err != nil {
 		log.Error(err)
@@ -229,7 +257,7 @@ func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 	}
 }
 
-func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+func syncQemuStatus(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
 	if place, _ := pClient.GetQemuPlaca(qemu.Metadata.Name); place.Cluster != "" {
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
@@ -254,11 +282,31 @@ func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1
 		qemu.Status.Power = v1alpha1.STATUS_POWER_UNKNOWN
 	}
 
-	qemuConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
+	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
 	if err != nil {
 		log.Error(err)
 		return
 	}
+
+	designConfig, err := buildQemuConfig(pClient, qemu)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	// Compare configs
+	for k, v := range designConfig {
+		if currentConfig[k] != v {
+			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
+			_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			return
+		}
+	}
+	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
 
 	var ifacesConfig []v1alpha1.QemuStatusNetwork
 	rExp := "(.{2}:.{2}:.{2}:.{2}:.{2}:.{2})"
@@ -266,7 +314,7 @@ func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1
 	for _, iface := range qemu.Spec.Network {
 		var ifaceConfig v1alpha1.QemuStatusNetwork
 		ifaceConfig.Name = iface.Name
-		macData := r.FindStringSubmatch(fmt.Sprintf("%s", qemuConfig[iface.Name]))
+		macData := r.FindStringSubmatch(fmt.Sprintf("%s", currentConfig[iface.Name]))
 		if len(macData) > 0 {
 			ifaceConfig.Mac = macData[0]
 		}
@@ -282,6 +330,25 @@ func syncQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1
 	}
 }
 
+func syncQemuConfig(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+	qemuConfig, err := buildQemuConfig(pClient, qemu)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	//fmt.Println(qemuConfig)
+
+	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
+	if err != nil {
+		log.Error(err)
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
+		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+}
+
 func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuConfig, error) {
 	result := make(map[string]interface{})
 
@@ -294,33 +361,21 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 	result["memory"] = qemu.Spec.Memory.Size
 	result["balloon"] = qemu.Spec.Memory.Balloon
 
+	ifaceCurrentMacs := make(map[string]string)
+	for _, data := range qemu.Status.Net {
+		ifaceCurrentMacs[data.Name] = data.Mac
+	}
+
 	for _, iface := range qemu.Spec.Network {
 		if iface.Mac == "" {
-			result[iface.Name] = fmt.Sprintf("model=%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
+			if ifaceCurrentMacs[iface.Name] == "" {
+				result[iface.Name] = fmt.Sprintf("model=%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
+			} else {
+				result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, ifaceCurrentMacs[iface.Name], iface.Bridge, iface.Tag)
+			}
 		} else {
 			result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
 		}
-	}
-
-	for _, disk := range qemu.Spec.Disk {
-		r := regexp.MustCompile(`^[a-z]+(\d+)$`)
-		diskNum := r.FindStringSubmatch(disk.Name)
-		if len(diskNum) != 2 {
-			return nil, fmt.Errorf("cannot extract disk num: %s", disk.Name)
-		}
-		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Status.VmId, diskNum[1])
-		storageConfig := proxmox.StorageConfig{
-			Node:     qemu.Status.Node,
-			VmId:     qemu.Status.VmId,
-			Filename: filename,
-			Size:     disk.Size,
-			Storage:  disk.Storage,
-		}
-		err := client.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).StorageCreate(storageConfig)
-		if err != nil {
-			return proxmox.QemuConfig{}, err
-		}
-		result[disk.Name] = fmt.Sprintf("%s:%s,size=%s", disk.Storage, filename, disk.Size)
 	}
 
 	for k, v := range qemu.Spec.Options {
