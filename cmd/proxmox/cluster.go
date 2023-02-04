@@ -121,6 +121,23 @@ func (cluster *Cluster) PostReq(apiPath string, data interface{}) error {
 	return nil
 }
 
+func (cluster *Cluster) PutReq(apiPath string, data interface{}) error {
+	resp, err := cluster.resty.R().
+		SetBody(data).
+		SetHeader("Accept", "application/json").
+		SetHeader("Content-Type", "application/json").
+		Put(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
+	if err != nil {
+		return err
+	}
+
+	if resp.IsError() {
+		return fmt.Errorf("proxmox api error: %d %s %s", resp.StatusCode(), resp.Status(), resp.Body())
+	}
+
+	return nil
+}
+
 func (cluster *Cluster) DeleteReq(apiPath string) error {
 	resp, err := cluster.resty.R().
 		Delete(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))

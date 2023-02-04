@@ -197,3 +197,15 @@ func (qemu *Qemu) GetStatus(vmId int) (QemuStatus, error) {
 	log.Debug(qemuStatus)
 	return qemuStatus, nil
 }
+
+func (qemu *Qemu) Resize(vmId int, disk, size string) error {
+	log.Infof("Resize qemu disk, cluster: %s node: %s vmid: %d disk: %s size: %s", qemu.node.cluster.name, qemu.node.name, vmId, disk, size)
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d", "disk":"%s", "size":"%s"}`, qemu.node.name, vmId, disk, size)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/resize", qemu.node.name, vmId)
+	err := qemu.node.cluster.PutReq(apiPath, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

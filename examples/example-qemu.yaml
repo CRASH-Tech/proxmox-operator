@@ -32,7 +32,7 @@ spec:
   disk:
     - name: scsi0
       storage: local-lvm
-      size: 4G
+      size: 7G
     # - name: scsi1
     #   storage: local-lvm
     #   size: 32G

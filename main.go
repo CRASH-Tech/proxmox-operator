@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
@@ -424,20 +425,39 @@ func syncQemuNetStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu
 }
 
 func syncQemuDisksStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	// designConfig, err := buildQemuConfig(pClient, qemu)
-	// if err != nil {
-	// 	return qemu, err
-	// }
+	qemuConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
+	if err != nil {
+		return qemu, err
+	}
 
-	// //////////////
-	// qemuConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
-	// if err != nil {
-	// 	return qemu, err
-	// }
+	rDiskNum := regexp.MustCompile(`^[a-z]+(\d+)$`)
+	rDiskSize := regexp.MustCompile(`^.+size=(.+),?$`)
+	for _, disk := range qemu.Spec.Disk {
+		diskNum := rDiskNum.FindStringSubmatch(disk.Name)
+		if len(diskNum) != 2 {
+			return qemu, fmt.Errorf("cannot extract disk num: %s", disk.Name)
+		}
+		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Status.VmId, diskNum[1])
+		storageConfig := proxmox.StorageConfig{
+			Node:     qemu.Status.Node,
+			VmId:     qemu.Status.VmId,
+			Filename: filename,
+			Size:     disk.Size,
+			Storage:  disk.Storage,
+		}
 
-	// for k, v := range qemuConfig {
-	// 	fmt.Println(k, v)
-	// }
+		for k, v := range qemuConfig {
+			if strings.Contains(fmt.Sprint(v), storageConfig.Filename) {
+				designSize := rDiskSize.FindStringSubmatch(fmt.Sprint(v))
+				if len(designSize) != 2 {
+					return qemu, fmt.Errorf("cannot extract disk num: %s", disk.Name)
+				}
+				if storageConfig.Size != designSize[1] {
+					pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Resize(qemu.Status.VmId, k, storageConfig.Size)
+				}
+			}
+		}
+	}
 
 	return qemu, nil
 }
@@ -515,4 +535,9 @@ func createQemuDisks(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v
 	}
 
 	return qemuConfig, nil
+}
+
+func buildStorageConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.StorageConfig, error) {
+
+
 }
