@@ -24,6 +24,16 @@ type (
 	QemuConfig map[string]interface{}
 )
 
+type QemuPendingConfigResp struct {
+	Data []QemuPendingConfig `json:"data"`
+}
+
+type QemuPendingConfig struct {
+	Key     string      `json:"key"`
+	Value   interface{} `json:"value"`
+	Pending interface{} `json:"pending,omitempty"`
+}
+
 type QemuStatus struct {
 	Data struct {
 		Maxdisk    int64   `json:"maxdisk"`
@@ -93,9 +103,10 @@ func (qemu *Qemu) SetConfig(qemuConfig QemuConfig) error {
 }
 
 func (qemu *Qemu) GetConfig(vmId int) (QemuConfig, error) {
-	log.Infof("Get qemu VM config, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	log.Infof("Get qemu config, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/config", qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
+
 	qemuConfigData, err := qemu.node.cluster.GetReq(apiPath, data)
 	if err != nil {
 		return nil, err
@@ -105,6 +116,25 @@ func (qemu *Qemu) GetConfig(vmId int) (QemuConfig, error) {
 	err = json.Unmarshal(qemuConfigData, &qemuConfig)
 	if err != nil {
 		return nil, err
+	}
+
+	return qemuConfig.Data, nil
+}
+
+func (qemu *Qemu) GetPendingConfig(vmId int) ([]QemuPendingConfig, error) {
+	log.Infof("Get qemu pending config, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/pending", qemu.node.name, vmId)
+	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
+
+	qemuConfigData, err := qemu.node.cluster.GetReq(apiPath, data)
+	if err != nil {
+		return []QemuPendingConfig{}, err
+	}
+
+	qemuConfig := QemuPendingConfigResp{}
+	err = json.Unmarshal(qemuConfigData, &qemuConfig)
+	if err != nil {
+		return []QemuPendingConfig{}, err
 	}
 
 	return qemuConfig.Data, nil
@@ -122,7 +152,7 @@ func (qemu *Qemu) Delete(vmId int) error {
 }
 
 func (qemu *Qemu) Start(vmId int) error {
-	log.Infof("Starting qemu VM, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	log.Infof("Starting qemu, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/start", qemu.node.name, vmId)
 	err := qemu.node.cluster.PostReq(apiPath, data)
@@ -134,7 +164,7 @@ func (qemu *Qemu) Start(vmId int) error {
 }
 
 func (qemu *Qemu) Stop(vmId int) error {
-	log.Infof("Stopping qemu VM, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	log.Infof("Stopping qemu, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/stop", qemu.node.name, vmId)
 	err := qemu.node.cluster.PostReq(apiPath, data)
@@ -146,7 +176,7 @@ func (qemu *Qemu) Stop(vmId int) error {
 }
 
 func (qemu *Qemu) GetStatus(vmId int) (QemuStatus, error) {
-	log.Infof("Get qemu VM status, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	log.Infof("Get qemu status, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
 
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)

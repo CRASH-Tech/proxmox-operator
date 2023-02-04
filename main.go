@@ -282,6 +282,8 @@ func deleteQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 }
 
 func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+	fmt.Println(pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetPendingConfig(qemu.Status.VmId))
+
 	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
 	if err != nil {
 		return qemu, err

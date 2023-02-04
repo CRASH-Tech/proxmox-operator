@@ -90,6 +90,8 @@ type NodeResp struct {
 func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error) {
 	resp, err := cluster.resty.R().
 		SetBody(data).
+		SetHeader("Accept", "application/json").
+		SetHeader("Content-Type", "application/json").
 		Get(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
 	if err != nil {
 		return nil, err
