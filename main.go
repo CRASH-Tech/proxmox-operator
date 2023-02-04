@@ -430,20 +430,12 @@ func syncQemuDisksStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qe
 		return qemu, err
 	}
 
-	rDiskNum := regexp.MustCompile(`^[a-z]+(\d+)$`)
 	rDiskSize := regexp.MustCompile(`^.+size=(.+),?$`)
 	for _, disk := range qemu.Spec.Disk {
-		diskNum := rDiskNum.FindStringSubmatch(disk.Name)
-		if len(diskNum) != 2 {
-			return qemu, fmt.Errorf("cannot extract disk num: %s", disk.Name)
-		}
-		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Status.VmId, diskNum[1])
-		storageConfig := proxmox.StorageConfig{
-			Node:     qemu.Status.Node,
-			VmId:     qemu.Status.VmId,
-			Filename: filename,
-			Size:     disk.Size,
-			Storage:  disk.Storage,
+		var storageConfig proxmox.StorageConfig
+		storageConfig, err = buildStorageConfig(pClient, qemu)
+		if err != nil {
+			return qemu, fmt.Errorf("cannot build storage config: %s", err)
 		}
 
 		for k, v := range qemuConfig {
@@ -498,6 +490,27 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 	return result, nil
 }
 
+func buildStorageConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.StorageConfig, error) {
+	var storageConfig proxmox.StorageConfig
+
+	rDiskNum := regexp.MustCompile(`^[a-z]+(\d+)$`)
+	for _, disk := range qemu.Spec.Disk {
+		diskNum := rDiskNum.FindStringSubmatch(disk.Name)
+		if len(diskNum) != 2 {
+			return storageConfig, fmt.Errorf("cannot extract disk num: %s", disk.Name)
+		}
+		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Status.VmId, diskNum[1])
+		storageConfig = proxmox.StorageConfig{
+			Node:     qemu.Status.Node,
+			VmId:     qemu.Status.VmId,
+			Filename: filename,
+			Size:     disk.Size,
+			Storage:  disk.Storage,
+		}
+	}
+	return storageConfig, nil
+}
+
 func setQemuConfig(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) error {
 	qemuConfig, err := buildQemuConfig(pClient, qemu)
 	if err != nil {
@@ -514,30 +527,16 @@ func setQemuConfig(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 
 func createQemuDisks(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu, qemuConfig proxmox.QemuConfig) (proxmox.QemuConfig, error) {
 	for _, disk := range qemu.Spec.Disk {
-		r := regexp.MustCompile(`^[a-z]+(\d+)$`)
-		diskNum := r.FindStringSubmatch(disk.Name)
-		if len(diskNum) != 2 {
-			return qemuConfig, fmt.Errorf("cannot extract disk num: %s", disk.Name)
+		storageConfig, err := buildStorageConfig(pClient, qemu)
+		if err != nil {
+			return qemuConfig, fmt.Errorf("cannot build storage config: %s", err)
 		}
-		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Status.VmId, diskNum[1])
-		storageConfig := proxmox.StorageConfig{
-			Node:     qemu.Status.Node,
-			VmId:     qemu.Status.VmId,
-			Filename: filename,
-			Size:     disk.Size,
-			Storage:  disk.Storage,
-		}
-		err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).StorageCreate(storageConfig)
+		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).StorageCreate(storageConfig)
 		if err != nil {
 			return qemuConfig, fmt.Errorf("cannot create qemu disk: %s", err)
 		}
-		qemuConfig[disk.Name] = fmt.Sprintf("%s:%s,size=%s", disk.Storage, filename, disk.Size)
+		qemuConfig[disk.Name] = fmt.Sprintf("%s:%s,size=%s", storageConfig.Storage, storageConfig.Filename, storageConfig.Size)
 	}
 
 	return qemuConfig, nil
-}
-
-func buildStorageConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.StorageConfig, error) {
-
-
 }

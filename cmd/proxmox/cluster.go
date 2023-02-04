@@ -153,7 +153,7 @@ func (cluster *Cluster) DeleteReq(apiPath string) error {
 }
 
 func (cluster *Cluster) GetNextId() (int, error) {
-	log.Infof("Get next id, cluster: %s", cluster.name)
+	log.Debugf("Get next id, cluster: %s", cluster.name)
 
 	apiPath := "/cluster/nextid"
 
