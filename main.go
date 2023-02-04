@@ -99,24 +99,39 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 			deleteQemu(kCLient, pClient, qemu)
 			return
 		}
-		if (qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_DEPLOYED) || (qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_NOT_SYNCED) {
-			syncQemuStatus(kCLient, pClient, qemu)
+
+		qemu, err = syncQemuPlaceStatus(kCLient, pClient, qemu)
+		if err != nil {
+			log.Error("cannot sync qemu deploy status", err)
 		}
-		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_NOT_SYNCED {
-			syncQemuConfig(kCLient, pClient, qemu)
+
+		qemu, err = syncQemuPowerStatus(kCLient, pClient, qemu)
+		if err != nil {
+			log.Error("cannot sync qemu power status", err)
 		}
+
+		qemu, err = syncQemuNetStatus(kCLient, pClient, qemu)
+		if err != nil {
+			log.Error("cannot sync qemu network status", err)
+		}
+
+		qemu, err = syncQemuDeployStatus(kCLient, pClient, qemu)
+		if err != nil {
+			log.Error("cannot sync qemu deploy status", err)
+		}
+
 	}
 
 }
 
-func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+func createNewQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
 	if place, _ := pClient.GetQemuPlaca(qemu.Metadata.Name); place.Cluster != "" {
 		log.Info("Qemu already exist, skip creation:", place)
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
-		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+		_, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
 			log.Error(err)
 		}
@@ -198,14 +213,14 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	if err != nil {
 		log.Error(err)
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+		_, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
 			log.Error(err)
 		}
 	}
 
 	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
-	_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	_, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		log.Error(err)
 	}
@@ -218,10 +233,10 @@ func createNewQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	}
 }
 
-func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+func deleteQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
 	if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY {
 		qemu.RemoveFinalizers()
-		_, err := kCLient.V1alpha1().Qemu().Patch(qemu)
+		_, err := kClient.V1alpha1().Qemu().Patch(qemu)
 		if err != nil {
 			log.Error(err)
 		}
@@ -229,7 +244,7 @@ func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 	}
 
 	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DELETING
-	qemu, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	qemu, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		log.Error(err)
 		return
@@ -250,31 +265,77 @@ func deleteQemu(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 	}
 
 	qemu.RemoveFinalizers()
-	_, err = kCLient.V1alpha1().Qemu().Patch(qemu)
+	_, err = kClient.V1alpha1().Qemu().Patch(qemu)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 }
 
-func syncQemuStatus(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
+func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
+	if err != nil {
+		return qemu, err
+	}
+
+	designConfig, err := buildQemuConfig(pClient, qemu)
+	if err != nil {
+		return qemu, err
+	}
+
+	var outOfSync bool
+	for k, v := range designConfig {
+		if k == "node" || k == "vmid" {
+			continue
+		}
+		if fmt.Sprint(currentConfig[k]) != fmt.Sprint(v) {
+			log.Infof("Qemu %s is out of sync, %s: %v != %v", qemu.Metadata.Name, k, currentConfig[k], v)
+			outOfSync = true
+		}
+	}
+
+	var syncFail bool
+	if outOfSync {
+		err = setQemuConfig(kClient, pClient, qemu)
+		if err != nil {
+			syncFail = true
+		}
+	}
+
+	if syncFail {
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
+	} else {
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
+	}
+
+	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+	if err != nil {
+		return qemu, err
+	}
+
+	return qemu, nil
+}
+
+func syncQemuPlaceStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	if place, _ := pClient.GetQemuPlaca(qemu.Metadata.Name); place.Cluster != "" {
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
 
 		var err error
-		qemu, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
-			log.Error(err)
-			return
+			return qemu, err
 		}
 	}
 
+	return qemu, nil
+}
+
+func syncQemuPowerStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	qemuStatus, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetStatus(qemu.Status.VmId)
 	if err != nil {
-		log.Error(err)
-		return
+		return qemu, err
 	}
 	if qemuStatus.Data.Status == proxmox.STATUS_RUNNING {
 		qemu.Status.Power = v1alpha1.STATUS_POWER_ON
@@ -284,35 +345,19 @@ func syncQemuStatus(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1
 		qemu.Status.Power = v1alpha1.STATUS_POWER_UNKNOWN
 	}
 
+	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+	if err != nil {
+		return qemu, err
+	}
+
+	return qemu, nil
+}
+
+func syncQemuNetStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
 	if err != nil {
-		log.Error(err)
-		return
+		return qemu, err
 	}
-
-	designConfig, err := buildQemuConfig(pClient, qemu)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	// Compare configs
-	for k, v := range designConfig {
-		if k == "node" || k == "vmid" {
-			continue
-		}
-		if fmt.Sprint(currentConfig[k]) != fmt.Sprint(v) {
-			log.Infof("Qemu %s is out of sync, %s: %v != %v", qemu.Metadata.Name, k, currentConfig[k], v)
-			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
-			qemu, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
-			if err != nil {
-				log.Error(err)
-				return
-			}
-			return
-		}
-	}
-	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
 
 	var ifacesConfig []v1alpha1.QemuStatusNetwork
 	rExp := "(.{2}:.{2}:.{2}:.{2}:.{2}:.{2})"
@@ -329,29 +374,12 @@ func syncQemuStatus(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1
 	}
 	qemu.Status.Net = ifacesConfig
 
-	qemu, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
-		log.Error(err)
-		return
-	}
-}
-
-func syncQemuConfig(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) {
-	qemuConfig, err := buildQemuConfig(pClient, qemu)
-	if err != nil {
-		log.Error(err)
-		return
+		return qemu, err
 	}
 
-	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
-	if err != nil {
-		log.Error(err)
-		// qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		// qemu, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
-		// if err != nil {
-		// 	log.Error(err)
-		// }
-	}
+	return qemu, nil
 }
 
 func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuConfig, error) {
@@ -391,4 +419,18 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 	}
 
 	return result, nil
+}
+
+func setQemuConfig(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) error {
+	qemuConfig, err := buildQemuConfig(pClient, qemu)
+	if err != nil {
+		return err
+	}
+
+	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
