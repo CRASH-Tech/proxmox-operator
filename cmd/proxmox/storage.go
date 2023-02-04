@@ -15,7 +15,7 @@ type StorageConfig struct {
 }
 
 func (node *Node) StorageCreate(storageConfig StorageConfig) error {
-	log.Infof("Creating storage, cluster: %s, node: %s config: %+v", node.cluster.name, node.name, storageConfig)
+	log.Debugf("Creating storage, cluster: %s, node: %s config: %+v", node.cluster.name, node.name, storageConfig)
 	apiPath := fmt.Sprintf("/nodes/%s/storage/%s/content", node.name, storageConfig.Storage)
 	err := node.cluster.PostReq(apiPath, storageConfig)
 	if err != nil {

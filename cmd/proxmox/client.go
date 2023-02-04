@@ -87,7 +87,7 @@ func (client *Client) GetQemuPlacableCluster(cpu, mem int) (QemuPlace, error) {
 	return QemuPlace{}, fmt.Errorf("cannot find avialable cluster")
 }
 
-func (client *Client) GetQemuPlaca(name string) (QemuPlace, error) {
+func (client *Client) GetQemuPlace(name string) (QemuPlace, error) {
 	var place QemuPlace
 	for cluster, _ := range client.Clusters {
 		resources, err := client.Cluster(cluster).GetResources(RESOURCE_QEMU)

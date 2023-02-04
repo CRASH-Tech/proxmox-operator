@@ -30,22 +30,42 @@ func init() {
 	flag.StringVar(&configPath, "c", "config.yaml", "config file path. Default: config.yaml")
 	c, err := readConfig(configPath)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	config = c
+
+	switch config.Log.Format {
+	case "text":
+		log.SetFormatter(&log.TextFormatter{})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.SetFormatter(&log.TextFormatter{})
+	}
+
+	switch config.Log.Level {
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
 
 	var restConfig *rest.Config
 	if path, isSet := os.LookupEnv("KUBECONFIG"); isSet {
 		log.Printf("using configuration from '%s'", path)
 		restConfig, err = clientcmd.BuildConfigFromFlags("", path)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	} else {
 		log.Printf("using in-cluster configuration")
 		restConfig, err = rest.InClusterConfig()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 	config.DynamicClient = dynamic.NewForConfigOrDie(restConfig)
@@ -131,8 +151,8 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 }
 
 func createNewQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) error {
-	if place, _ := pClient.GetQemuPlaca(qemu.Metadata.Name); place.Cluster != "" {
-		log.Info("Qemu already exist, skip creation:", place)
+	if place, _ := pClient.GetQemuPlace(qemu.Metadata.Name); place.Cluster != "" {
+		log.Warnf("Qemu already exist, skip creation:", place)
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
@@ -264,7 +284,7 @@ func deleteQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 		return fmt.Errorf("cannot get qemu power status: %s", err)
 	}
 	if qemu.Status.Power == v1alpha1.STATUS_POWER_ON {
-		log.Info("Waiting qemu stop for deletion: %s", qemu.Metadata.Name)
+		log.Warnf("Waiting qemu stop for deletion: %s", qemu.Metadata.Name)
 	} else {
 		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Delete(qemu.Status.VmId)
 		if err != nil {
@@ -290,7 +310,7 @@ func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, q
 	var isPending bool
 	for _, v := range pendingConfig {
 		if v.Pending != nil {
-			log.Infof("Qemu %s is in pending state, %s: %v != %v", qemu.Metadata.Name, v.Key, v.Value, v.Pending)
+			log.Warnf("Qemu %s is in pending state, %s: %v != %v", qemu.Metadata.Name, v.Key, v.Value, v.Pending)
 			isPending = true
 		}
 	}
@@ -321,7 +341,7 @@ func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, q
 			continue
 		}
 		if fmt.Sprint(currentConfig[k]) != fmt.Sprint(v) {
-			log.Infof("Qemu %s is out of sync, %s: %v != %v", qemu.Metadata.Name, k, currentConfig[k], v)
+			log.Warnf("Qemu %s is out of sync, %s: %v != %v", qemu.Metadata.Name, k, currentConfig[k], v)
 			outOfSync = true
 		}
 	}
@@ -349,7 +369,7 @@ func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, q
 }
 
 func syncQemuPlaceStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	if place, _ := pClient.GetQemuPlaca(qemu.Metadata.Name); place.Cluster != "" {
+	if place, _ := pClient.GetQemuPlace(qemu.Metadata.Name); place.Cluster != "" {
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
@@ -434,14 +454,11 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 	for _, iface := range qemu.Spec.Network {
 		if iface.Mac == "" {
 			if ifaceCurrentMacs[iface.Name] == "" {
-				//result[iface.Name] = fmt.Sprintf("model=%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
 				result[iface.Name] = fmt.Sprintf("%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
 			} else {
-				//result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, ifaceCurrentMacs[iface.Name], iface.Bridge, iface.Tag)
 				result[iface.Name] = fmt.Sprintf("%s=%s,bridge=%s,tag=%d", iface.Model, ifaceCurrentMacs[iface.Name], iface.Bridge, iface.Tag)
 			}
 		} else {
-			//result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
 			result[iface.Name] = fmt.Sprintf("%s=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
 		}
 	}

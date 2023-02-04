@@ -103,7 +103,7 @@ func (qemu *Qemu) SetConfig(qemuConfig QemuConfig) error {
 }
 
 func (qemu *Qemu) GetConfig(vmId int) (QemuConfig, error) {
-	log.Infof("Get qemu config, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	log.Debugf("Get qemu config, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/config", qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
 
@@ -122,7 +122,7 @@ func (qemu *Qemu) GetConfig(vmId int) (QemuConfig, error) {
 }
 
 func (qemu *Qemu) GetPendingConfig(vmId int) ([]QemuPendingConfig, error) {
-	log.Infof("Get qemu pending config, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	log.Debugf("Get qemu pending config, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/pending", qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)
 
@@ -176,7 +176,7 @@ func (qemu *Qemu) Stop(vmId int) error {
 }
 
 func (qemu *Qemu) GetStatus(vmId int) (QemuStatus, error) {
-	log.Infof("Get qemu status, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
+	log.Debugf("Get qemu status, cluster: %s node: %s vmid: %d", qemu.node.cluster.name, qemu.node.name, vmId)
 
 	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", qemu.node.name, vmId)
 	data := fmt.Sprintf(`{"node":"%s", "vmid":"%d"}`, qemu.node.name, vmId)

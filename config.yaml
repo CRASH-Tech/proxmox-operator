@@ -1,4 +1,6 @@
-debug: 0
+log:
+  level: info
+  format: text
 clusters:
   # crash-lab:
   #   api_url: https://crash-lab.uis.st/api2/json
