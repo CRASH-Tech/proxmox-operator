@@ -99,7 +99,7 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 			deleteQemu(kCLient, pClient, qemu)
 			return
 		}
-		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_DEPLOYED {
+		if (qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_DEPLOYED) || (qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_NOT_SYNCED) {
 			syncQemuStatus(kCLient, pClient, qemu)
 		}
 		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_NOT_SYNCED {
@@ -262,7 +262,9 @@ func syncQemuStatus(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
-		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+
+		var err error
+		qemu, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
 			log.Error(err)
 			return
@@ -296,9 +298,13 @@ func syncQemuStatus(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1
 
 	// Compare configs
 	for k, v := range designConfig {
-		if currentConfig[k] != v {
+		if k == "node" || k == "vmid" {
+			continue
+		}
+		if fmt.Sprint(currentConfig[k]) != fmt.Sprint(v) {
+			log.Infof("Qemu %s is out of sync, %s: %v != %v", qemu.Metadata.Name, k, currentConfig[k], v)
 			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
-			_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+			qemu, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 			if err != nil {
 				log.Error(err)
 				return
@@ -323,7 +329,7 @@ func syncQemuStatus(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1
 	}
 	qemu.Status.Net = ifacesConfig
 
-	_, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+	qemu, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		log.Error(err)
 		return
@@ -336,16 +342,15 @@ func syncQemuConfig(kCLient *kuberentes.Client, pClient *proxmox.Client, qemu v1
 		log.Error(err)
 		return
 	}
-	//fmt.Println(qemuConfig)
 
 	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
 	if err != nil {
 		log.Error(err)
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		_, err := kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
-		if err != nil {
-			log.Error(err)
-		}
+		// qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
+		// qemu, err = kCLient.V1alpha1().Qemu().UpdateStatus(qemu)
+		// if err != nil {
+		// 	log.Error(err)
+		// }
 	}
 }
 
@@ -369,12 +374,15 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 	for _, iface := range qemu.Spec.Network {
 		if iface.Mac == "" {
 			if ifaceCurrentMacs[iface.Name] == "" {
-				result[iface.Name] = fmt.Sprintf("model=%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
+				//result[iface.Name] = fmt.Sprintf("model=%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
+				result[iface.Name] = fmt.Sprintf("%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
 			} else {
-				result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, ifaceCurrentMacs[iface.Name], iface.Bridge, iface.Tag)
+				//result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, ifaceCurrentMacs[iface.Name], iface.Bridge, iface.Tag)
+				result[iface.Name] = fmt.Sprintf("%s=%s,bridge=%s,tag=%d", iface.Model, ifaceCurrentMacs[iface.Name], iface.Bridge, iface.Tag)
 			}
 		} else {
-			result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
+			//result[iface.Name] = fmt.Sprintf("model=%s,macaddr=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
+			result[iface.Name] = fmt.Sprintf("%s=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
 		}
 	}
 
