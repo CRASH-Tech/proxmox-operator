@@ -118,6 +118,7 @@ func (qemu *Qemu) GetConfig(vmId int) (QemuConfig, error) {
 		return nil, err
 	}
 
+	log.Debug(qemuConfig.Data)
 	return qemuConfig.Data, nil
 }
 
@@ -137,6 +138,7 @@ func (qemu *Qemu) GetPendingConfig(vmId int) ([]QemuPendingConfig, error) {
 		return []QemuPendingConfig{}, err
 	}
 
+	log.Debug(qemuConfig.Data)
 	return qemuConfig.Data, nil
 }
 
@@ -192,5 +194,6 @@ func (qemu *Qemu) GetStatus(vmId int) (QemuStatus, error) {
 		return QemuStatus{}, err
 	}
 
+	log.Debug(qemuStatus)
 	return qemuStatus, nil
 }
