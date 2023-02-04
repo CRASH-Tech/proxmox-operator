@@ -432,20 +432,23 @@ func syncQemuDisksStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qe
 
 	rDiskSize := regexp.MustCompile(`^.+size=(.+),?$`)
 	for _, disk := range qemu.Spec.Disk {
-		var storageConfig proxmox.StorageConfig
-		storageConfig, err = buildStorageConfig(pClient, qemu)
+		var designStorageConfig proxmox.StorageConfig
+		designStorageConfig, err = buildStorageConfig(pClient, qemu)
 		if err != nil {
 			return qemu, fmt.Errorf("cannot build storage config: %s", err)
 		}
 
 		for k, v := range qemuConfig {
-			if strings.Contains(fmt.Sprint(v), storageConfig.Filename) {
-				designSize := rDiskSize.FindStringSubmatch(fmt.Sprint(v))
-				if len(designSize) != 2 {
+			if strings.Contains(fmt.Sprint(v), designStorageConfig.Filename) {
+				currentSize := rDiskSize.FindStringSubmatch(fmt.Sprint(v))
+				if len(currentSize) != 2 {
 					return qemu, fmt.Errorf("cannot extract disk num: %s", disk.Name)
 				}
-				if storageConfig.Size != designSize[1] {
-					pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Resize(qemu.Status.VmId, k, storageConfig.Size)
+				if designStorageConfig.Size != currentSize[1] {
+					err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Resize(qemu.Status.VmId, k, designStorageConfig.Size)
+					if err != nil {
+						return qemu, fmt.Errorf("cannot resize qemu disk: %s", err)
+					}
 				}
 			}
 		}
