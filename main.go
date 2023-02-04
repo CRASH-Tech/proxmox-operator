@@ -259,15 +259,23 @@ func deleteQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alph
 		}
 	}
 
-	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Delete(qemu.Status.VmId)
+	qemu, err = syncQemuPowerStatus(kClient, pClient, qemu)
 	if err != nil {
-		return fmt.Errorf("cannot delete qemu: %s", err)
+		return fmt.Errorf("cannot get qemu power status: %s", err)
 	}
+	if qemu.Status.Power == v1alpha1.STATUS_POWER_ON {
+		log.Info("Waiting qemu stop for deletion: %s", qemu.Metadata.Name)
+	} else {
+		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Delete(qemu.Status.VmId)
+		if err != nil {
+			return fmt.Errorf("cannot delete qemu: %s", err)
+		}
 
-	qemu.RemoveFinalizers()
-	_, err = kClient.V1alpha1().Qemu().Patch(qemu)
-	if err != nil {
-		return fmt.Errorf("cannot remove qemu finalizer: %s", err)
+		qemu.RemoveFinalizers()
+		_, err = kClient.V1alpha1().Qemu().Patch(qemu)
+		if err != nil {
+			return fmt.Errorf("cannot remove qemu finalizer: %s", err)
+		}
 	}
 
 	return nil
