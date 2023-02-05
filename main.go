@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
@@ -102,92 +101,89 @@ func readConfig(path string) (common.Config, error) {
 	return config, err
 }
 
-func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
+func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 	log.Info("Refreshing v1alpha1...")
-	qemus, err := kCLient.V1alpha1().Qemu().GetAll()
+	qemus, err := kClient.V1alpha1().Qemu().GetAll()
 	if err != nil {
 		log.Error(err)
 		return
 	}
 
 	for _, qemu := range qemus {
-		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY &&
-			qemu.Metadata.DeletionTimestamp == "" {
-
-			err = createNewQemu(kCLient, pClient, qemu)
+		switch qemu.Status.Deploy {
+		case v1alpha1.STATUS_DEPLOY_EMPTY, v1alpha1.STATUS_DEPLOY_ERROR:
+			qemu, err := getQemuPlace(kClient, pClient, qemu)
 			if err != nil {
-				log.Errorf("cannot create qemu: %s", err)
+				log.Error("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
+				qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
+				qemu = cleanQemuPlaceStatus(qemu)
+				qemu = updateQemuStatus(kClient, qemu)
+
 				continue
 			}
-			continue
-		}
-		if qemu.Metadata.DeletionTimestamp != "" {
-			err = deleteQemu(kCLient, pClient, qemu)
+
+			qemu, err = createNewQemu(pClient, qemu)
 			if err != nil {
-				log.Errorf("cannot delete qemu: %s", err)
+				log.Error("cannot create qemu %s: %s", qemu.Metadata.Name, err)
+				if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_ERROR {
+					qemu = cleanQemuPlaceStatus(qemu)
+				}
+
+				qemu = updateQemuStatus(kClient, qemu)
+
 				continue
 			}
-			continue
-		}
-		log.Warnf("%v///////////////////////////////////////////////////////////////////////////////////////////////////", qemu)
 
-		qemu, err = syncQemuPlaceStatus(kCLient, pClient, qemu)
-		if err != nil {
-			log.Error("cannot sync qemu deploy status: %s", err)
+			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_SYNCED
+			qemu = updateQemuStatus(kClient, qemu)
+		default:
+			log.Warnf("unknown qemu state: %s %s", qemu.Metadata.Name, qemu.Status.Deploy)
 		}
-
-		qemu, err = syncQemuPowerStatus(kCLient, pClient, qemu)
-		if err != nil {
-			log.Errorf("cannot sync qemu power status: %s", err)
-		}
-
-		qemu, err = syncQemuNetStatus(kCLient, pClient, qemu)
-		if err != nil {
-			log.Errorf("cannot sync qemu network status: %s", err)
-		}
-
-		qemu, err = syncQemuDisksStatus(kCLient, pClient, qemu)
-		if err != nil {
-			log.Errorf("cannot sync qemu disks status: %s", err)
-		}
-
-		qemu, err = syncQemuDeployStatus(kCLient, pClient, qemu)
-		if err != nil {
-			log.Errorf("cannot sync qemu deploy status: %s", err)
-		}
-
 	}
 
 }
 
-func createNewQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) error {
+func cleanQemuPlaceStatus(qemu v1alpha1.Qemu) v1alpha1.Qemu {
+	qemu.Status.Cluster = ""
+	qemu.Status.Node = ""
+	qemu.Status.VmId = -1
+
+	return qemu
+}
+
+func updateQemuStatus(kClient *kuberentes.Client, qemu v1alpha1.Qemu) v1alpha1.Qemu {
+	var err error
+	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+	if err != nil {
+		log.Errorf("cannot update qemu status %s: %s", qemu.Metadata.Name, err)
+	}
+	return qemu
+}
+
+func getQemuPlace(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	place, err := pClient.GetQemuPlace(qemu.Metadata.Name)
 	if err != nil {
-		return fmt.Errorf("cannot check is qemu already exist: %s", err)
+		return qemu, fmt.Errorf("cannot check is qemu already exist: %s", err)
 	}
-	log.Error(qemu.Metadata.Name, place) //////////////////////////////////////
+
 	if place.Found {
-		log.Warnf("Qemu already exist, skip creation: %s place: %v", qemu.Metadata.Name, place)
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
-		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-		if err != nil {
-			return fmt.Errorf("cannot get qemu avialable place: %v", err)
-		}
-		return nil
+
+		return qemu, fmt.Errorf("qemu already exist, skip creation: %s place: %v", qemu.Metadata.Name, place)
 	}
 
 	if qemu.Spec.Cluster == "" && qemu.Spec.Pool == "" {
-		return fmt.Errorf("no cluster or pool are set for: %s", qemu.Metadata.Name)
+		return qemu, fmt.Errorf("no cluster or pool are set for: %s", qemu.Metadata.Name)
 	}
 
 	if qemu.Spec.Pool != "" {
 		var err error
 		place, err = pClient.GetQemuPlacableCluster((qemu.Spec.CPU.Cores * qemu.Spec.CPU.Sockets), qemu.Spec.Memory.Size)
 		if err != nil {
-			return fmt.Errorf("cannot find autoplace cluster: %s", err)
+			return qemu, fmt.Errorf("cannot find autoplace cluster: %s", err)
 		}
 	}
 
@@ -200,7 +196,7 @@ func createNewQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	if qemu.Spec.Node == "" {
 		node, err := pClient.Cluster(qemu.Status.Cluster).GetQemuPlacableNode((qemu.Spec.CPU.Cores * qemu.Spec.CPU.Sockets), qemu.Spec.Memory.Size)
 		if err != nil {
-			return fmt.Errorf("cannot find avialable node: %s", err)
+			return qemu, fmt.Errorf("cannot find avialable node: %s", err)
 		}
 		qemu.Status.Node = node
 	} else {
@@ -210,320 +206,46 @@ func createNewQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	if qemu.Spec.VmId == 0 {
 		nextId, err := pClient.Cluster(qemu.Status.Cluster).GetNextId()
 		if err != nil {
-			return fmt.Errorf("cannot get qemu next id: %s", err)
+			return qemu, fmt.Errorf("cannot get qemu next id: %s", err)
 		}
 		qemu.Status.VmId = nextId
 	} else {
 		qemu.Status.VmId = qemu.Spec.VmId
 	}
 
+	return qemu, nil
+}
+
+func createNewQemu(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	qemuConfig, err := buildQemuConfig(pClient, qemu)
 	if err != nil {
-		return fmt.Errorf("cannot build qemu config: %s", err)
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
+		return qemu, fmt.Errorf("cannot build qemu config: %s", err)
 	}
 
 	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Create(qemuConfig)
 	if err != nil {
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		qemu.Status.Cluster = ""
-		qemu.Status.Node = ""
-		qemu.Status.VmId = 0
-		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-		if err != nil {
-			return fmt.Errorf("cannot create qemu: %s", err)
-		}
-
-		return fmt.Errorf("cannot create qemu: %s", err)
+		return qemu, fmt.Errorf("cannot create qemu: %s", err)
 	}
 
-	qemuConfig, err = createQemuDisks(kClient, pClient, qemu, qemuConfig)
+	qemuConfig, err = createQemuDisks(pClient, qemu, qemuConfig)
 	if err != nil {
-		return fmt.Errorf("cannot create qemu disk: %s", err)
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
+		return qemu, fmt.Errorf("cannot create qemu disk: %s", err)
 	}
 
 	pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
 	if err != nil {
-		return fmt.Errorf("cannot set qemu config: %s", err)
-	}
-
-	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
-	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-	if err != nil {
-		return fmt.Errorf("cannot update new qemu status: %s", err)
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
+		return qemu, fmt.Errorf("cannot set qemu config: %s", err)
 	}
 
 	if qemu.Spec.Autostart {
 		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Start(qemu.Status.VmId)
 		if err != nil {
-			return fmt.Errorf("cannot start qemu: %s", err)
-		}
-	}
-
-	return nil
-}
-
-func deleteQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) error {
-	if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY {
-		qemu.RemoveFinalizers()
-		_, err := kClient.V1alpha1().Qemu().Patch(qemu)
-		if err != nil {
-			return fmt.Errorf("cannot remove qemu finalizer: %s", err)
-		}
-		return nil
-	}
-
-	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DELETING
-	qemu, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-	if err != nil {
-		return fmt.Errorf("cannot update qemu status: %s", err)
-	}
-
-	if !isQemuPlaced(qemu) {
-		return nil
-	}
-
-	if qemu.Spec.Autostop {
-		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Stop(qemu.Status.VmId)
-		if err != nil {
-			return fmt.Errorf("cannot stop: %s", err)
-		}
-	}
-
-	qemu, err = syncQemuPowerStatus(kClient, pClient, qemu)
-	if err != nil {
-		return fmt.Errorf("cannot get qemu power status: %s", err)
-	}
-	if qemu.Status.Power == v1alpha1.STATUS_POWER_ON {
-		log.Warnf("Waiting qemu stop for deletion: %s", qemu.Metadata.Name)
-	} else {
-		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Delete(qemu.Status.VmId)
-		if err != nil {
-			return fmt.Errorf("cannot delete qemu: %s", err)
-		}
-
-		qemu.RemoveFinalizers()
-		_, err = kClient.V1alpha1().Qemu().Patch(qemu)
-		if err != nil {
-			return fmt.Errorf("cannot remove qemu finalizer: %s", err)
-		}
-	}
-
-	return nil
-}
-
-func syncQemuPlaceStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	place, err := pClient.GetQemuPlace(qemu.Metadata.Name)
-	if err != nil {
-		return qemu, fmt.Errorf("cannot get qemu place: %s", err)
-	}
-
-	if place.Found {
-		qemu.Status.Cluster = place.Cluster
-		qemu.Status.Node = place.Node
-		qemu.Status.VmId = place.VmId
-	} else {
-		qemu.Status.Cluster = ""
-		qemu.Status.Node = ""
-		qemu.Status.VmId = 0
-	}
-
-	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-	if err != nil {
-		return qemu, err
-	}
-
-	return qemu, nil
-}
-
-func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	if !isQemuPlaced(qemu) {
-		return qemu, nil
-	}
-
-	pendingConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetPendingConfig(qemu.Status.VmId)
-	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-		if err != nil {
-			return qemu, err
-		}
-		return qemu, fmt.Errorf("cannot get pending config: %s", err)
-	}
-
-	var isPending bool
-	for _, v := range pendingConfig {
-		if v.Pending != nil {
-			log.Warnf("Qemu %s is in pending state, %s: %v != %v", qemu.Metadata.Name, v.Key, v.Value, v.Pending)
-			isPending = true
-		}
-	}
-
-	if isPending {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_PENDING
-		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-		if err != nil {
-			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-			qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-			if err != nil {
-				return qemu, err
-			}
-			return qemu, err
-		}
-
-		return qemu, nil
-	}
-
-	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
-	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-		if err != nil {
-			return qemu, err
-		}
-		return qemu, err
-	}
-
-	designConfig, err := buildQemuConfig(pClient, qemu)
-	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-		if err != nil {
-			return qemu, err
-		}
-		return qemu, err
-	}
-
-	var outOfSync bool
-	for k, v := range designConfig {
-		if k == "node" || k == "vmid" {
-			continue
-		}
-		if fmt.Sprint(currentConfig[k]) != fmt.Sprint(v) {
-			log.Warnf("Qemu %s is out of sync, %s: %v != %v", qemu.Metadata.Name, k, currentConfig[k], v)
-			outOfSync = true
-		}
-	}
-
-	var syncFail bool
-	if outOfSync {
-		err = setQemuConfig(kClient, pClient, qemu)
-		if err != nil {
-			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-			qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-			if err != nil {
-				return qemu, err
-			}
-			syncFail = true
-		}
-	}
-
-	if syncFail {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
-	} else {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
-	}
-
-	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-		if err != nil {
-			return qemu, err
-		}
-		return qemu, err
-	}
-
-	return qemu, nil
-}
-
-func syncQemuPowerStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	if !isQemuPlaced(qemu) {
-		return qemu, nil
-	}
-
-	qemuStatus, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetStatus(qemu.Status.VmId)
-	if err != nil {
-		qemu.Status.Power = v1alpha1.STATUS_POWER_UNKNOWN
-	}
-
-	if qemuStatus.Data.Status == proxmox.STATUS_RUNNING {
-		qemu.Status.Power = v1alpha1.STATUS_POWER_ON
-	} else if qemuStatus.Data.Status == proxmox.STATUS_STOPPED {
-		qemu.Status.Power = v1alpha1.STATUS_POWER_OFF
-	}
-
-	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-	if err != nil {
-		return qemu, err
-	}
-
-	return qemu, nil
-}
-
-func syncQemuNetStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	if !isQemuPlaced(qemu) {
-		return qemu, nil
-	}
-
-	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
-	if err != nil {
-		return qemu, err
-	}
-
-	var ifacesConfig []v1alpha1.QemuStatusNetwork
-	rExp := "(.{2}:.{2}:.{2}:.{2}:.{2}:.{2})"
-	r := regexp.MustCompile(rExp)
-	for _, iface := range qemu.Spec.Network {
-		var ifaceConfig v1alpha1.QemuStatusNetwork
-		ifaceConfig.Name = iface.Name
-		macData := r.FindStringSubmatch(fmt.Sprintf("%s", currentConfig[iface.Name]))
-		if len(macData) > 0 {
-			ifaceConfig.Mac = macData[0]
-		}
-
-		ifacesConfig = append(ifacesConfig, ifaceConfig)
-	}
-	qemu.Status.Net = ifacesConfig
-
-	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
-	if err != nil {
-		return qemu, err
-	}
-
-	return qemu, nil
-}
-
-func syncQemuDisksStatus(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	if !isQemuPlaced(qemu) {
-		return qemu, nil
-	}
-
-	qemuConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
-	if err != nil {
-		return qemu, err
-	}
-
-	rDiskSize := regexp.MustCompile(`^.+size=(.+),?$`)
-	for _, disk := range qemu.Spec.Disk {
-		var designStorageConfig proxmox.StorageConfig
-		designStorageConfig, err = buildStorageConfig(pClient, qemu)
-		if err != nil {
-			return qemu, fmt.Errorf("cannot build storage config: %s", err)
-		}
-
-		for k, v := range qemuConfig {
-			if strings.Contains(fmt.Sprint(v), designStorageConfig.Filename) {
-				currentSize := rDiskSize.FindStringSubmatch(fmt.Sprint(v))
-				if len(currentSize) != 2 {
-					return qemu, fmt.Errorf("cannot extract disk num: %s", disk.Name)
-				}
-				if designStorageConfig.Size != currentSize[1] {
-					err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Resize(qemu.Status.VmId, k, designStorageConfig.Size)
-					if err != nil {
-						return qemu, fmt.Errorf("cannot resize qemu disk: %s", err)
-					}
-				}
-			}
+			log.Errorf("cannot start qemu: %s %s", qemu.Metadata.Name, err)
+			return qemu, nil
 		}
 	}
 
@@ -566,7 +288,23 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 	return result, nil
 }
 
-func buildStorageConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.StorageConfig, error) {
+func createQemuDisks(pClient *proxmox.Client, qemu v1alpha1.Qemu, qemuConfig proxmox.QemuConfig) (proxmox.QemuConfig, error) {
+	for _, disk := range qemu.Spec.Disk {
+		storageConfig, err := buildStorageConfig(qemu)
+		if err != nil {
+			return qemuConfig, fmt.Errorf("cannot build storage config: %s", err)
+		}
+		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).StorageCreate(storageConfig)
+		if err != nil {
+			return qemuConfig, fmt.Errorf("cannot create qemu disk: %s", err)
+		}
+		qemuConfig[disk.Name] = fmt.Sprintf("%s:%s,size=%s", storageConfig.Storage, storageConfig.Filename, storageConfig.Size)
+	}
+
+	return qemuConfig, nil
+}
+
+func buildStorageConfig(qemu v1alpha1.Qemu) (proxmox.StorageConfig, error) {
 	var storageConfig proxmox.StorageConfig
 
 	rDiskNum := regexp.MustCompile(`^[a-z]+(\d+)$`)
@@ -585,42 +323,4 @@ func buildStorageConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.Sto
 		}
 	}
 	return storageConfig, nil
-}
-
-func setQemuConfig(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) error {
-	qemuConfig, err := buildQemuConfig(pClient, qemu)
-	if err != nil {
-		return err
-	}
-
-	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func createQemuDisks(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu, qemuConfig proxmox.QemuConfig) (proxmox.QemuConfig, error) {
-	for _, disk := range qemu.Spec.Disk {
-		storageConfig, err := buildStorageConfig(pClient, qemu)
-		if err != nil {
-			return qemuConfig, fmt.Errorf("cannot build storage config: %s", err)
-		}
-		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).StorageCreate(storageConfig)
-		if err != nil {
-			return qemuConfig, fmt.Errorf("cannot create qemu disk: %s", err)
-		}
-		qemuConfig[disk.Name] = fmt.Sprintf("%s:%s,size=%s", storageConfig.Storage, storageConfig.Filename, storageConfig.Size)
-	}
-
-	return qemuConfig, nil
-}
-
-func isQemuPlaced(qemu v1alpha1.Qemu) bool {
-	if qemu.Status.Cluster != "" && qemu.Status.Node != "" && qemu.Status.VmId != 0 {
-		return true
-	}
-
-	return false
 }
