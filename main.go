@@ -134,6 +134,8 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 
 				continue
 			}
+
+			continue
 		case v1alpha1.STATUS_DEPLOY_EMPTY, v1alpha1.STATUS_DEPLOY_ERROR:
 			qemu, err := getQemuPlace(pClient, qemu)
 			if err != nil {
@@ -159,6 +161,8 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 
 			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_SYNCED
 			qemu = updateQemuStatus(kClient, qemu)
+
+			continue
 		case v1alpha1.STATUS_DEPLOY_SYNCED, v1alpha1.STATUS_DEPLOY_NOT_SYNCED, v1alpha1.STATUS_DEPLOY_PENDING, v1alpha1.STATUS_DEPLOY_UNKNOWN:
 			place, err := pClient.GetQemuPlace(qemu.Metadata.Name)
 			if err != nil {
@@ -197,6 +201,8 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 
 				qemu = updateQemuStatus(kClient, qemu)
 			}
+
+			continue
 		default:
 			log.Warnf("unknown qemu state: %s %s", qemu.Metadata.Name, qemu.Status.Deploy)
 		}
