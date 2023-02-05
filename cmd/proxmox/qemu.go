@@ -31,7 +31,7 @@ type QemuPendingConfigResp struct {
 type QemuPendingConfig struct {
 	Key     string      `json:"key"`
 	Value   interface{} `json:"value"`
-	Pending interface{} `json:"pending,omitempty"`
+	Pending interface{} `json:"pending"`
 }
 
 type QemuStatus struct {
@@ -132,14 +132,14 @@ func (qemu *Qemu) GetPendingConfig(vmId int) ([]QemuPendingConfig, error) {
 		return []QemuPendingConfig{}, err
 	}
 
-	qemuConfig := QemuPendingConfigResp{}
-	err = json.Unmarshal(qemuConfigData, &qemuConfig)
+	pendingConfig := QemuPendingConfigResp{}
+	err = json.Unmarshal(qemuConfigData, &pendingConfig)
 	if err != nil {
 		return []QemuPendingConfig{}, err
 	}
 
-	log.Debug(qemuConfig.Data)
-	return qemuConfig.Data, nil
+	log.Debug(pendingConfig.Data)
+	return pendingConfig.Data, nil
 }
 
 func (qemu *Qemu) Delete(vmId int) error {

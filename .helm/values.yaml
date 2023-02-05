@@ -1,6 +1,6 @@
 qemu:
   example-qemu:
-    count: 0
+    count: 2
     spec:
       cluster: pve-test
       #node: crash-lab
@@ -49,7 +49,7 @@ qemu:
         protection: 0
         #lol: lol
   example-vm:
-    count: 0
+    count: 2
     spec:
       cluster: pve-test
       #node: crash-lab
@@ -96,4 +96,4 @@ qemu:
         agent: "0"
         numa: 1
         protection: 0
-        #"lol": lol
+        #lol: lol
