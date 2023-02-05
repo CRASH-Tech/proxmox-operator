@@ -22,6 +22,7 @@ type QemuPlace struct {
 	Cluster string
 	Node    string
 	VmId    int
+	Found   bool
 }
 
 func NewClient(clusters map[string]ClusterApiConfig) *Client {
@@ -100,10 +101,13 @@ func (client *Client) GetQemuPlace(name string) (QemuPlace, error) {
 				place.Cluster = cluster
 				place.Node = resource.Node
 				place.VmId = resource.Vmid
+				place.Found = true
+
 				return place, nil
 			}
 
 		}
 	}
+
 	return place, nil
 }
