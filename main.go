@@ -154,7 +154,20 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 
 				continue
 			} else {
+				qemu, err = getQemuPowerStatus(pClient, qemu)
+				if err != nil {
+					log.Errorf("cannot get qemu power status %s %s", qemu.Metadata.Name, err)
+					qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_UNKNOWN
+					qemu = updateQemuStatus(kClient, qemu)
+				}
+				qemu, err = getQemuNetStatus(pClient, qemu)
+				if err != nil {
+					log.Errorf("cannot get qemu network status %s %s", qemu.Metadata.Name, err)
+					qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_UNKNOWN
+					qemu = updateQemuStatus(kClient, qemu)
+				}
 
+				qemu = updateQemuStatus(kClient, qemu)
 			}
 		default:
 			log.Warnf("unknown qemu state: %s %s", qemu.Metadata.Name, qemu.Status.Deploy)
@@ -343,4 +356,47 @@ func buildStorageConfig(qemu v1alpha1.Qemu) (proxmox.StorageConfig, error) {
 		}
 	}
 	return storageConfig, nil
+}
+
+func getQemuPowerStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+	qemuStatus, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetStatus(qemu.Status.VmId)
+	if err != nil {
+		qemu.Status.Power = v1alpha1.STATUS_POWER_UNKNOWN
+		return qemu, fmt.Errorf("cannot get qemu power status %s %s", qemu.Metadata.Name, err)
+	}
+
+	switch qemuStatus.Data.Status {
+	case proxmox.STATUS_RUNNING:
+		qemu.Status.Power = v1alpha1.STATUS_POWER_ON
+	case proxmox.STATUS_STOPPED:
+		qemu.Status.Power = v1alpha1.STATUS_POWER_OFF
+	default:
+		qemu.Status.Power = v1alpha1.STATUS_POWER_UNKNOWN
+	}
+
+	return qemu, nil
+}
+
+func getQemuNetStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
+	if err != nil {
+		return qemu, fmt.Errorf("cannot get qemu config from proxmox: %s", err)
+	}
+
+	var ifacesConfig []v1alpha1.QemuStatusNetwork
+	rExp := "(.{2}:.{2}:.{2}:.{2}:.{2}:.{2})"
+	r := regexp.MustCompile(rExp)
+	for _, iface := range qemu.Spec.Network {
+		var ifaceConfig v1alpha1.QemuStatusNetwork
+		ifaceConfig.Name = iface.Name
+		macData := r.FindStringSubmatch(fmt.Sprintf("%s", currentConfig[iface.Name]))
+		if len(macData) > 0 {
+			ifaceConfig.Mac = macData[0]
+		}
+
+		ifacesConfig = append(ifacesConfig, ifaceConfig)
+	}
+	qemu.Status.Net = ifacesConfig
+
+	return qemu, nil
 }
