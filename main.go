@@ -104,7 +104,6 @@ func readConfig(path string) (common.Config, error) {
 
 func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 	log.Info("Refreshing v1alpha1...")
-
 	qemus, err := kCLient.V1alpha1().Qemu().GetAll()
 	if err != nil {
 		log.Error(err)
@@ -112,24 +111,25 @@ func processV1aplha1(kCLient *kuberentes.Client, pClient *proxmox.Client) {
 	}
 
 	for _, qemu := range qemus {
-		if (qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY || qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_ERROR) &&
+		if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_EMPTY &&
 			qemu.Metadata.DeletionTimestamp == "" {
 
 			err = createNewQemu(kCLient, pClient, qemu)
 			if err != nil {
 				log.Errorf("cannot create qemu: %s", err)
-				return
+				continue
 			}
-			return
+			continue
 		}
 		if qemu.Metadata.DeletionTimestamp != "" {
 			err = deleteQemu(kCLient, pClient, qemu)
 			if err != nil {
 				log.Errorf("cannot delete qemu: %s", err)
-				return
+				continue
 			}
-			return
+			continue
 		}
+		log.Warnf("%v///////////////////////////////////////////////////////////////////////////////////////////////////", qemu)
 
 		qemu, err = syncQemuPlaceStatus(kCLient, pClient, qemu)
 		if err != nil {
@@ -172,7 +172,7 @@ func createNewQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
-		_, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
 			return fmt.Errorf("cannot get qemu avialable place: %v", err)
 		}
@@ -247,7 +247,7 @@ func createNewQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	}
 
 	qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
-	_, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		return fmt.Errorf("cannot update new qemu status: %s", err)
 	}
@@ -343,7 +343,10 @@ func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, q
 	pendingConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetPendingConfig(qemu.Status.VmId)
 	if err != nil {
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			return qemu, err
+		}
 		return qemu, fmt.Errorf("cannot get pending config: %s", err)
 	}
 
@@ -356,11 +359,14 @@ func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, q
 	}
 
 	if isPending {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_PENDING
 		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
 			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-			kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+			qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+			if err != nil {
+				return qemu, err
+			}
 			return qemu, err
 		}
 
@@ -370,14 +376,20 @@ func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, q
 	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
 	if err != nil {
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			return qemu, err
+		}
 		return qemu, err
 	}
 
 	designConfig, err := buildQemuConfig(pClient, qemu)
 	if err != nil {
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			return qemu, err
+		}
 		return qemu, err
 	}
 
@@ -397,7 +409,10 @@ func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, q
 		err = setQemuConfig(kClient, pClient, qemu)
 		if err != nil {
 			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-			kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+			qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+			if err != nil {
+				return qemu, err
+			}
 			syncFail = true
 		}
 	}
@@ -411,7 +426,10 @@ func syncQemuDeployStatus(kClient *kuberentes.Client, pClient *proxmox.Client, q
 	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
-		kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+		if err != nil {
+			return qemu, err
+		}
 		return qemu, err
 	}
 
