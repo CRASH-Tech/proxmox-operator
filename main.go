@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
@@ -496,6 +497,7 @@ func deleteQemu(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, err
 }
 
 func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+	//Check config state
 	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
 	if err != nil {
 		return qemu, fmt.Errorf("cannot get qemu current config: %s", err)
@@ -526,6 +528,32 @@ func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.
 		return qemu, fmt.Errorf("cannot get pending config: %s", err)
 	}
 
+	//Check Disks config
+	rDiskSize := regexp.MustCompile(`^.+size=(.+),?$`)
+	for _, disk := range qemu.Spec.Disk {
+		var designStorageConfig proxmox.StorageConfig
+		designStorageConfig, err = buildStorageConfig(qemu)
+		if err != nil {
+			return qemu, fmt.Errorf("cannot build storage config: %s", err)
+		}
+
+		for k, v := range currentConfig {
+			if strings.Contains(fmt.Sprint(v), designStorageConfig.Filename) {
+				currentSize := rDiskSize.FindStringSubmatch(fmt.Sprint(v))
+				if len(currentSize) != 2 {
+					return qemu, fmt.Errorf("cannot extract disk num: %s", disk.Name)
+				}
+				if designStorageConfig.Size != currentSize[1] {
+					err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Resize(qemu.Status.VmId, k, designStorageConfig.Size)
+					if err != nil {
+						return qemu, fmt.Errorf("cannot resize qemu disk: %s", err)
+					}
+				}
+			}
+		}
+	}
+
+	//Check pending state
 	var isPending bool
 	for _, v := range pendingConfig {
 		if v.Pending != nil && v.Value != v.Pending {
