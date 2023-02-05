@@ -1,18 +1,174 @@
 package proxmox
 
 import (
-	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox/cluster"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strconv"
+
+	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
 )
 
-func (client *Client) ClusterGetNextId(c string) (int, error) {
-	apiConfig, err := client.getApiConfig(c)
+const (
+	RESOURCE_QEMU    = "qemu"
+	RESOURCE_LXC     = "lxc"
+	RESOURCE_OPENVZ  = "openvz"
+	RESOURCE_STORAGE = "storage"
+	RESOURCE_NODE    = "node"
+	RESOURCE_SDN     = "sdn"
+	RESOURCE_POOL    = "pool"
+)
+
+type ClusterApiConfig struct {
+	ApiUrl         string `yaml:"api_url"`
+	ApiTokenId     string `yaml:"api_token_id"`
+	ApiTokenSecret string `yaml:"api_token_secret"`
+	Pool           string `yaml:"pool"`
+}
+
+type Cluster struct {
+	name      string
+	apiCOnfig ClusterApiConfig
+	resty     *resty.Client
+}
+
+type NextIdResp struct {
+	NextId string `json:"data"`
+}
+
+type ResourcesResp struct {
+	Data []Resource `json:"data"`
+}
+
+type Resource struct {
+	Maxdisk    int64   `json:"maxdisk"`
+	Netout     int64   `json:"netout,omitempty"`
+	ID         string  `json:"id"`
+	Vmid       int     `json:"vmid,omitempty"`
+	Type       string  `json:"type"`
+	Mem        int64   `json:"mem,omitempty"`
+	Diskread   int64   `json:"diskread,omitempty"`
+	Maxmem     int64   `json:"maxmem,omitempty"`
+	Template   int     `json:"template,omitempty"`
+	Status     string  `json:"status"`
+	Netin      int64   `json:"netin,omitempty"`
+	Maxcpu     int     `json:"maxcpu,omitempty"`
+	Node       string  `json:"node"`
+	Uptime     int     `json:"uptime,omitempty"`
+	Diskwrite  int64   `json:"diskwrite,omitempty"`
+	Name       string  `json:"name,omitempty"`
+	CPU        float64 `json:"cpu,omitempty"`
+	Disk       int     `json:"disk"`
+	Level      string  `json:"level,omitempty"`
+	Shared     int     `json:"shared,omitempty"`
+	Content    string  `json:"content,omitempty"`
+	Storage    string  `json:"storage,omitempty"`
+	Plugintype string  `json:"plugintype,omitempty"`
+}
+
+type NodesResp struct {
+	Nodes []NodeResp `json:"data"`
+}
+
+type NodeResp struct {
+	Maxmem         int64   `json:"maxmem"`
+	Maxdisk        int64   `json:"maxdisk"`
+	ID             string  `json:"id"`
+	Type           string  `json:"type"`
+	Mem            int64   `json:"mem"`
+	Uptime         int     `json:"uptime"`
+	SslFingerprint string  `json:"ssl_fingerprint"`
+	CPU            float64 `json:"cpu"`
+	Level          string  `json:"level"`
+	Disk           int64   `json:"disk"`
+	Status         string  `json:"status"`
+	Maxcpu         int     `json:"maxcpu"`
+	Node           string  `json:"node"`
+}
+
+func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error) {
+	resp, err := cluster.resty.R().
+		SetBody(data).
+		SetHeader("Accept", "application/json").
+		SetHeader("Content-Type", "application/json").
+		Get(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.IsError() {
+		return nil, fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
+	}
+
+	return resp.Body(), nil
+}
+
+func (cluster *Cluster) PostReq(apiPath string, data interface{}) error {
+	resp, err := cluster.resty.R().
+		SetBody(data).
+		SetHeader("Accept", "application/json").
+		SetHeader("Content-Type", "application/json").
+		Post(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
+	if err != nil {
+		return err
+	}
+
+	if resp.IsError() {
+		return fmt.Errorf("proxmox api error: %d %s %s", resp.StatusCode(), resp.Status(), resp.Body())
+	}
+
+	return nil
+}
+
+func (cluster *Cluster) PutReq(apiPath string, data interface{}) error {
+	resp, err := cluster.resty.R().
+		SetBody(data).
+		SetHeader("Accept", "application/json").
+		SetHeader("Content-Type", "application/json").
+		Put(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
+	if err != nil {
+		return err
+	}
+
+	if resp.IsError() {
+		return fmt.Errorf("proxmox api error: %d %s %s", resp.StatusCode(), resp.Status(), resp.Body())
+	}
+
+	return nil
+}
+
+func (cluster *Cluster) DeleteReq(apiPath string) error {
+	resp, err := cluster.resty.R().
+		Delete(fmt.Sprintf("%s/%s", cluster.apiCOnfig.ApiUrl, apiPath))
+	if err != nil {
+		return err
+	}
+
+	if resp.IsError() {
+		return fmt.Errorf("proxmox api error: %d %s", resp.StatusCode(), resp.Body())
+	}
+
+	return nil
+}
+
+func (cluster *Cluster) GetNextId() (int, error) {
+	log.Debugf("Get next id, cluster: %s", cluster.name)
+
+	apiPath := "/cluster/nextid"
+
+	data, err := cluster.GetReq(apiPath, nil)
 	if err != nil {
 		return -1, err
 	}
 
-	log.Infof("Get next id, cluster: %s", c)
-	nextId, err := cluster.GetNextId(apiConfig)
+	nextIdResp := NextIdResp{}
+	err = json.Unmarshal(data, &nextIdResp)
+	if err != nil {
+		return -1, err
+	}
+
+	nextId, err := strconv.Atoi(nextIdResp.NextId)
 	if err != nil {
 		return -1, err
 	}
@@ -20,17 +176,120 @@ func (client *Client) ClusterGetNextId(c string) (int, error) {
 	return nextId, err
 }
 
-func (client *Client) ClusterGetResources(c, resourceType string) ([]cluster.Resource, error) {
-	apiConfig, err := client.getApiConfig(c)
+func (cluster *Cluster) GetResources(resourceType string) ([]Resource, error) {
+	apiPath := "/cluster/resources"
+
+	reqData := fmt.Sprintf(`{"type":"%s"}`, resourceType)
+	data, err := cluster.GetReq(apiPath, reqData)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Infof("Get cluster resources, cluster: %s type: %s", c, resourceType)
-	resources, err := cluster.GetResources(apiConfig, resourceType)
+	resourcesResp := ResourcesResp{}
+	err = json.Unmarshal(data, &resourcesResp)
 	if err != nil {
 		return nil, err
 	}
 
-	return resources, err
+	return resourcesResp.Data, err
+}
+
+func (cluster *Cluster) Node(node string) *Node {
+	result := Node{
+		name:    node,
+		cluster: *cluster,
+	}
+
+	return &result
+}
+
+func (cluster *Cluster) GetNodes() ([]NodeResp, error) {
+	apiPath := "/nodes"
+
+	data, err := cluster.GetReq(apiPath, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	nodesData := NodesResp{}
+	err = json.Unmarshal(data, &nodesData)
+	if err != nil {
+		return nil, err
+	}
+
+	return nodesData.Nodes, err
+}
+
+func (cluster *Cluster) GetNode(nodeName string) (NodeResp, error) {
+	apiPath := "/nodes"
+
+	data, err := cluster.GetReq(apiPath, nil)
+	if err != nil {
+		return NodeResp{}, err
+	}
+
+	nodesData := NodesResp{}
+	err = json.Unmarshal(data, &nodesData)
+	if err != nil {
+		return NodeResp{}, err
+	}
+
+	for _, node := range nodesData.Nodes {
+		if node.Node == nodeName {
+			return node, nil
+		}
+	}
+
+	return NodeResp{}, err
+}
+
+func (cluster *Cluster) GetResourceCount(resourceType string) (int, error) {
+	resources, err := cluster.GetResources(resourceType)
+	if err != nil {
+		return -1, err
+	}
+
+	var result int
+	for _, r := range resources {
+		if r.Type == resourceType {
+			result++
+		}
+	}
+
+	return result, nil
+}
+
+func (cluster *Cluster) GetQemuPlacableNode(cpu, mem int) (string, error) {
+	nodes, err := cluster.GetNodes()
+	if err != nil {
+		return "", err
+	}
+
+	qemuCount := make(map[string]int)
+	for _, node := range nodes {
+		count, err := cluster.Node(node.Node).GetResourceCount(RESOURCE_QEMU)
+		if err != nil {
+			return "", err
+		}
+		qemuCount[node.Node] = count
+	}
+
+	keys := make([]string, 0, len(qemuCount))
+	for k := range qemuCount {
+		keys = append(keys, k)
+	}
+
+	sort.SliceStable(keys, func(i, j int) bool {
+		return qemuCount[keys[i]] < qemuCount[keys[j]]
+	})
+
+	for _, n := range keys {
+		if placable, err := cluster.Node(n).IsQemuPlacable(cpu, mem); err == nil {
+			if placable {
+				return n, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("cannot find avialable node")
 }

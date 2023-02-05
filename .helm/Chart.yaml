@@ -1,0 +1,4 @@
+apiVersion: v2
+name: dns
+description: A helm chart for manage dns records
+version: 1.0.0
