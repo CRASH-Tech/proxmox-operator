@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -110,11 +111,33 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 	}
 
 	for _, qemu := range qemus {
+		if qemu.Status.Deploy != v1alpha1.STATUS_DEPLOY_DELETING && qemu.Metadata.DeletionTimestamp != "" {
+			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DELETING
+			updateQemuStatus(kClient, qemu)
+
+			continue
+		}
+
 		switch qemu.Status.Deploy {
+		case v1alpha1.STATUS_DEPLOY_DELETING:
+			qemu, err := deleteQemu(pClient, qemu)
+			if err != nil {
+				log.Errorf("cannot delete qemu %s: %s", qemu.Metadata.Name, err)
+
+				continue
+			}
+
+			qemu.RemoveFinalizers()
+			_, err = kClient.V1alpha1().Qemu().Patch(qemu)
+			if err != nil {
+				log.Errorf("cannot patch qemu cr %s: %s", qemu.Metadata.Name, err)
+
+				continue
+			}
 		case v1alpha1.STATUS_DEPLOY_EMPTY, v1alpha1.STATUS_DEPLOY_ERROR:
 			qemu, err := getQemuPlace(pClient, qemu)
 			if err != nil {
-				log.Error("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
+				log.Errorf("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
 				qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
 				qemu = cleanQemuPlaceStatus(qemu)
 				qemu = updateQemuStatus(kClient, qemu)
@@ -124,7 +147,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 
 			qemu, err = createNewQemu(pClient, qemu)
 			if err != nil {
-				log.Error("cannot create qemu %s: %s", qemu.Metadata.Name, err)
+				log.Errorf("cannot create qemu %s: %s", qemu.Metadata.Name, err)
 				if qemu.Status.Deploy == v1alpha1.STATUS_DEPLOY_ERROR {
 					qemu = cleanQemuPlaceStatus(qemu)
 				}
@@ -159,12 +182,17 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 					log.Errorf("cannot get qemu power status %s %s", qemu.Metadata.Name, err)
 					qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_UNKNOWN
 					qemu = updateQemuStatus(kClient, qemu)
+
+					continue
 				}
+
 				qemu, err = getQemuNetStatus(pClient, qemu)
 				if err != nil {
 					log.Errorf("cannot get qemu network status %s %s", qemu.Metadata.Name, err)
 					qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_UNKNOWN
 					qemu = updateQemuStatus(kClient, qemu)
+
+					continue
 				}
 
 				qemu = updateQemuStatus(kClient, qemu)
@@ -205,7 +233,7 @@ func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, e
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
 
-		return qemu, fmt.Errorf("qemu already exist, skip creation: %s place: %v", qemu.Metadata.Name, place)
+		return qemu, fmt.Errorf("qemu already exist, skip creation, place: %v", place)
 	}
 
 	if qemu.Spec.Cluster == "" && qemu.Spec.Pool == "" {
@@ -362,7 +390,7 @@ func getQemuPowerStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Q
 	qemuStatus, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetStatus(qemu.Status.VmId)
 	if err != nil {
 		qemu.Status.Power = v1alpha1.STATUS_POWER_UNKNOWN
-		return qemu, fmt.Errorf("cannot get qemu power status %s %s", qemu.Metadata.Name, err)
+		return qemu, fmt.Errorf("cannot get qemu power status: %s", err)
 	}
 
 	switch qemuStatus.Data.Status {
@@ -397,6 +425,30 @@ func getQemuNetStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qem
 		ifacesConfig = append(ifacesConfig, ifaceConfig)
 	}
 	qemu.Status.Net = ifacesConfig
+
+	return qemu, nil
+}
+
+func deleteQemu(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+	if qemu.Spec.Autostop {
+		err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Stop(qemu.Status.VmId)
+		if err != nil {
+			return qemu, fmt.Errorf("cannot stop qemu: %s", err)
+		}
+	}
+
+	qemu, err := getQemuPowerStatus(pClient, qemu)
+	if err != nil {
+		return qemu, fmt.Errorf("cannot get qemu power status: %s", err)
+	}
+	if qemu.Status.Power == v1alpha1.STATUS_POWER_ON {
+		return qemu, errors.New("waiting for qemu stop")
+	} else {
+		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Delete(qemu.Status.VmId)
+		if err != nil {
+			return qemu, fmt.Errorf("cannot delete qemu: %s", err)
+		}
+	}
 
 	return qemu, nil
 }

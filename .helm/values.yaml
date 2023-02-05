@@ -1,6 +1,6 @@
 qemu:
   example-qemu:
-    count: 3
+    count: 0
     spec:
       cluster: pve-test
       #node: crash-lab
