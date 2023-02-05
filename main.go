@@ -112,7 +112,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 	for _, qemu := range qemus {
 		switch qemu.Status.Deploy {
 		case v1alpha1.STATUS_DEPLOY_EMPTY, v1alpha1.STATUS_DEPLOY_ERROR:
-			qemu, err := getQemuPlace(kClient, pClient, qemu)
+			qemu, err := getQemuPlace(pClient, qemu)
 			if err != nil {
 				log.Error("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
 				qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_ERROR
@@ -136,6 +136,26 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 
 			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_SYNCED
 			qemu = updateQemuStatus(kClient, qemu)
+		case v1alpha1.STATUS_DEPLOY_SYNCED, v1alpha1.STATUS_DEPLOY_NOT_SYNCED, v1alpha1.STATUS_DEPLOY_PENDING, v1alpha1.STATUS_DEPLOY_UNKNOWN:
+			place, err := pClient.GetQemuPlace(qemu.Metadata.Name)
+			if err != nil {
+				log.Errorf("cannot get qemu place %s %s", qemu.Metadata.Name, err)
+				qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_UNKNOWN
+				qemu = cleanQemuPlaceStatus(qemu)
+				qemu = updateQemuStatus(kClient, qemu)
+
+				continue
+			}
+
+			if !place.Found {
+				qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_UNKNOWN
+				qemu = cleanQemuPlaceStatus(qemu)
+				qemu = updateQemuStatus(kClient, qemu)
+
+				continue
+			} else {
+
+			}
 		default:
 			log.Warnf("unknown qemu state: %s %s", qemu.Metadata.Name, qemu.Status.Deploy)
 		}
@@ -160,7 +180,7 @@ func updateQemuStatus(kClient *kuberentes.Client, qemu v1alpha1.Qemu) v1alpha1.Q
 	return qemu
 }
 
-func getQemuPlace(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	place, err := pClient.GetQemuPlace(qemu.Metadata.Name)
 	if err != nil {
 		return qemu, fmt.Errorf("cannot check is qemu already exist: %s", err)
