@@ -167,14 +167,14 @@ func createNewQemu(kClient *kuberentes.Client, pClient *proxmox.Client, qemu v1a
 	}
 	log.Error(qemu.Metadata.Name, place) //////////////////////////////////////
 	if place.Found {
-		log.Warnf("Qemu already exist, skip creation: %s place: %s", qemu.Metadata.Name, place)
+		log.Warnf("Qemu already exist, skip creation: %s place: %v", qemu.Metadata.Name, place)
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_DEPLOYED
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
 		_, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 		if err != nil {
-			return fmt.Errorf("cannot get qemu avialable place: %s", err)
+			return fmt.Errorf("cannot get qemu avialable place: %v", err)
 		}
 		return nil
 	}
