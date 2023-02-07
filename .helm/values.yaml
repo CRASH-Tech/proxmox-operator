@@ -76,12 +76,12 @@ qemu:
         #   bridge: vmbr0
         #   tag: 104
       disk:
-        # - name: scsi0
-        #   storage: local-lvm
-        #   size: 12G
-        # - name: scsi1
-        #   storage: local-lvm
-        #   size: 32G
+        - name: scsi0
+          storage: local-lvm
+          size: 15G
+        - name: scsi1
+          storage: local-lvm
+          size: 1G
       options:
         ostype: "l26"
         bios: "seabios"

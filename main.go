@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
@@ -513,6 +512,7 @@ func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.
 		if k == "node" || k == "vmid" {
 			continue
 		}
+
 		if fmt.Sprint(currentConfig[k]) != fmt.Sprint(v) {
 			log.Warnf("Qemu %s is out of sync, %s: %v != %v", qemu.Metadata.Name, k, currentConfig[k], v)
 			outOfSync = true
@@ -531,25 +531,25 @@ func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.
 	//Check Disks config
 	rDiskSize := regexp.MustCompile(`^.+size=(.+),?$`)
 	for _, disk := range qemu.Spec.Disk {
-		var designStorageConfig proxmox.StorageConfig
-		designStorageConfig, err = buildStorageConfig(qemu)
-		if err != nil {
-			return qemu, fmt.Errorf("cannot build storage config: %s", err)
-		}
-
-		for k, v := range currentConfig {
-			if strings.Contains(fmt.Sprint(v), designStorageConfig.Filename) {
-				currentSize := rDiskSize.FindStringSubmatch(fmt.Sprint(v))
+		var isDiskFound bool
+		var isDiskChanged bool
+		for param, paramValue := range currentConfig {
+			if disk.Name == param {
+				isDiskFound = true
+				currentSize := rDiskSize.FindStringSubmatch(fmt.Sprint(paramValue))
 				if len(currentSize) != 2 {
-					return qemu, fmt.Errorf("cannot extract disk num: %s", disk.Name)
+					return qemu, fmt.Errorf("cannot parse disk params: %s %s", param, paramValue)
 				}
-				if designStorageConfig.Size != currentSize[1] {
-					err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Resize(qemu.Status.VmId, k, designStorageConfig.Size)
-					if err != nil {
-						return qemu, fmt.Errorf("cannot resize qemu disk: %s", err)
-					}
+				if disk.Size != currentSize[1] {
+					isDiskChanged = true
 				}
 			}
+		}
+		if !isDiskFound || isDiskChanged {
+			log.Warnf("Qemu %s disk is not found or changed: %s", qemu.Metadata.Name, disk)
+			qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_NOT_SYNCED
+
+			return qemu, nil
 		}
 	}
 
@@ -583,23 +583,9 @@ func setQemuConfig(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, 
 		return qemu, fmt.Errorf("cannot set qemu config: %s", err)
 	}
 
-	pendingConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetPendingConfig(qemu.Status.VmId)
+	qemu, err = checkQemuSyncStatus(pClient, qemu)
 	if err != nil {
-		return qemu, fmt.Errorf("cannot get pending config: %s", err)
-	}
-
-	var isPending bool
-	for _, v := range pendingConfig {
-		if v.Pending != nil && v.Value != v.Pending {
-			log.Warnf("Qemu %s is in pending state, %s: %v != %v", qemu.Metadata.Name, v.Key, v.Value, v.Pending)
-			isPending = true
-		}
-	}
-
-	if isPending {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_PENDING
-	} else {
-		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_SYNCED
+		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_UNKNOWN
 	}
 
 	return qemu, nil
