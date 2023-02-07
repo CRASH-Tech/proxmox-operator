@@ -49,7 +49,7 @@ qemu:
         protection: 0
         #lol: lol
   example-vm:
-    count: 2
+    count: 0
     spec:
       cluster: pve-test
       #node: crash-lab
@@ -81,7 +81,10 @@ qemu:
           size: 15G
         - name: scsi1
           storage: local-lvm
-          size: 1G
+          size: 4G
+        - name: scsi2
+          storage: local-lvm
+          size: 2G
       options:
         ostype: "l26"
         bios: "seabios"

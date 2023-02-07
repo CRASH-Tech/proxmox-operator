@@ -6,7 +6,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type StorageConfig struct {
+type DiskConfig struct {
+	Name     string `json:"-"`
 	Node     string `json:"node"`
 	VmId     int    `json:"vmid"`
 	Filename string `json:"filename"`
@@ -14,10 +15,10 @@ type StorageConfig struct {
 	Storage  string `json:"storage"`
 }
 
-func (node *Node) StorageCreate(storageConfig StorageConfig) error {
-	log.Debugf("Creating storage, cluster: %s, node: %s config: %+v", node.cluster.name, node.name, storageConfig)
-	apiPath := fmt.Sprintf("/nodes/%s/storage/%s/content", node.name, storageConfig.Storage)
-	err := node.cluster.PostReq(apiPath, storageConfig)
+func (node *Node) DiskCreate(diskConfig DiskConfig) error {
+	log.Debugf("Creating disk, cluster: %s, node: %s config: %+v", node.cluster.name, node.name, diskConfig)
+	apiPath := fmt.Sprintf("/nodes/%s/storage/%s/content", node.name, diskConfig.Storage)
+	err := node.cluster.PostReq(apiPath, diskConfig)
 	if err != nil {
 		return err
 	}

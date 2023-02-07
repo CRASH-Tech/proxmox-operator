@@ -392,40 +392,55 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 }
 
 func createQemuDisks(pClient *proxmox.Client, qemu v1alpha1.Qemu, qemuConfig proxmox.QemuConfig) (proxmox.QemuConfig, error) {
-	for _, disk := range qemu.Spec.Disk {
-		storageConfig, err := buildStorageConfig(qemu)
-		if err != nil {
-			return qemuConfig, fmt.Errorf("cannot build storage config: %s", err)
-		}
-		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).StorageCreate(storageConfig)
+	disksConfig, err := buildDisksConfig(qemu)
+	if err != nil {
+		return qemuConfig, fmt.Errorf("cannot build disks config: %s", err)
+	}
+
+	for _, diskConfig := range disksConfig {
+		err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).DiskCreate(diskConfig)
 		if err != nil {
 			return qemuConfig, fmt.Errorf("cannot create qemu disk: %s", err)
 		}
-		qemuConfig[disk.Name] = fmt.Sprintf("%s:%s,size=%s", storageConfig.Storage, storageConfig.Filename, storageConfig.Size)
+		qemuConfig[diskConfig.Name] = fmt.Sprintf("%s:%s,size=%s", diskConfig.Storage, diskConfig.Filename, diskConfig.Size)
 	}
 
 	return qemuConfig, nil
 }
 
-func buildStorageConfig(qemu v1alpha1.Qemu) (proxmox.StorageConfig, error) {
-	var storageConfig proxmox.StorageConfig
+func buildDisksConfig(qemu v1alpha1.Qemu) ([]proxmox.DiskConfig, error) {
+	var disksConfig []proxmox.DiskConfig
 
-	rDiskNum := regexp.MustCompile(`^[a-z]+(\d+)$`)
 	for _, disk := range qemu.Spec.Disk {
-		diskNum := rDiskNum.FindStringSubmatch(disk.Name)
-		if len(diskNum) != 2 {
-			return storageConfig, fmt.Errorf("cannot extract disk num: %s", disk.Name)
+		diskConfig, err := buildDiskConfig(qemu, disk)
+		if err != nil {
+			return disksConfig, fmt.Errorf("cannot build disk config: %s %s", disk, err)
 		}
-		filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Status.VmId, diskNum[1])
-		storageConfig = proxmox.StorageConfig{
-			Node:     qemu.Status.Node,
-			VmId:     qemu.Status.VmId,
-			Filename: filename,
-			Size:     disk.Size,
-			Storage:  disk.Storage,
-		}
+
+		disksConfig = append(disksConfig, diskConfig)
 	}
-	return storageConfig, nil
+	return disksConfig, nil
+}
+
+func buildDiskConfig(qemu v1alpha1.Qemu, disk v1alpha1.QemuDisk) (proxmox.DiskConfig, error) {
+	var diskConfig proxmox.DiskConfig
+	rDiskNum := regexp.MustCompile(`^[a-z]+(\d+)$`)
+	diskNum := rDiskNum.FindStringSubmatch(disk.Name)
+	if len(diskNum) != 2 {
+		return diskConfig, fmt.Errorf("cannot extract disk num: %s", disk.Name)
+	}
+
+	filename := fmt.Sprintf("vm-%d-disk-%s", qemu.Status.VmId, diskNum[1])
+	diskConfig = proxmox.DiskConfig{
+		Name:     disk.Name,
+		Node:     qemu.Status.Node,
+		VmId:     qemu.Status.VmId,
+		Filename: filename,
+		Size:     disk.Size,
+		Storage:  disk.Storage,
+	}
+
+	return diskConfig, nil
 }
 
 func getQemuPowerStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
@@ -472,6 +487,10 @@ func getQemuNetStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qem
 }
 
 func deleteQemu(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+	if qemu.Status.Cluster == "" || qemu.Status.Node == "" || qemu.Status.VmId == -1 {
+		return qemu, fmt.Errorf("unknown qemu status")
+	}
+
 	if qemu.Spec.Autostop {
 		err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Stop(qemu.Status.VmId)
 		if err != nil {
@@ -578,12 +597,6 @@ func setQemuConfig(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, 
 		return qemu, fmt.Errorf("cannot build qemu config: %s", err)
 	}
 
-	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
-	if err != nil {
-		return qemu, fmt.Errorf("cannot set qemu config: %s", err)
-	}
-
-	////////////////////////////////////
 	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
 	if err != nil {
 		return qemu, fmt.Errorf("cannot get qemu current config: %s", err)
@@ -608,10 +621,24 @@ func setQemuConfig(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, 
 		}
 		if !isDiskFound {
 			log.Warnf("Qemu %s disk is not found: %s", qemu.Metadata.Name, disk)
+			diskConfig, err := buildDiskConfig(qemu, disk)
+			if err != nil {
+				return qemu, err
+			}
+
+			err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).DiskCreate(diskConfig)
+			if err != nil {
+				log.Errorf("cannot create qemu disk: %s", err)
+			}
+			qemuConfig[disk.Name] = fmt.Sprintf("%s:%s,size=%s", diskConfig.Storage, diskConfig.Filename, diskConfig.Size)
 
 		}
 	}
-	////////////////////////////////////
+
+	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
+	if err != nil {
+		return qemu, fmt.Errorf("cannot set qemu config: %s", err)
+	}
 
 	qemu, err = checkQemuSyncStatus(pClient, qemu)
 	if err != nil {
