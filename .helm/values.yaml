@@ -6,6 +6,7 @@ qemu:
       #node: crash-lab
       #vmid: 222
       pool: prod
+      anti-affinity: masters
       autostart: true
       autostop: true
       cpu:

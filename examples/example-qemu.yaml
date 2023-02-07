@@ -9,6 +9,7 @@ spec:
   #node: crash-lab
   #vmid: 222
   pool: prod
+  anti-affinity: ""
   autostart: true
   autostop: true
   cpu:
