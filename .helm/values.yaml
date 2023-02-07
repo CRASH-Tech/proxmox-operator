@@ -29,7 +29,7 @@ qemu:
       disk:
         - name: scsi0
           storage: local-lvm
-          size: 9G
+          size: 1G
         # - name: scsi1
         #   storage: local-lvm
         #   size: 32G
@@ -47,9 +47,9 @@ qemu:
         agent: "0"
         numa: 1
         protection: 0
-        lol: lol
+        #lol: lol
   example-vm:
-    count: 3
+    count: 0
     spec:
       cluster: pve-test
       #node: crash-lab
@@ -78,10 +78,16 @@ qemu:
       disk:
         - name: scsi0
           storage: local-lvm
-          size: 9G
-        # - name: scsi1
-        #   storage: local-lvm
-        #   size: 32G
+          size: 15G
+        - name: scsi1
+          storage: local-lvm
+          size: 6G
+        - name: scsi2
+          storage: local-lvm
+          size: 2G
+        - name: scsi3
+          storage: local-lvm
+          size: 2G
       options:
         ostype: "l26"
         bios: "seabios"
@@ -96,4 +102,4 @@ qemu:
         agent: "0"
         numa: 1
         protection: 0
-        #"lol": lol
+        #lol: lol
