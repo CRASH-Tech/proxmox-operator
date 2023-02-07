@@ -583,6 +583,36 @@ func setQemuConfig(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, 
 		return qemu, fmt.Errorf("cannot set qemu config: %s", err)
 	}
 
+	////////////////////////////////////
+	currentConfig, err := pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().GetConfig(qemu.Status.VmId)
+	if err != nil {
+		return qemu, fmt.Errorf("cannot get qemu current config: %s", err)
+	}
+	rDiskSize := regexp.MustCompile(`^.+size=(.+),?$`)
+	for _, disk := range qemu.Spec.Disk {
+		var isDiskFound bool
+		for param, paramValue := range currentConfig {
+			if disk.Name == param {
+				isDiskFound = true
+				currentSize := rDiskSize.FindStringSubmatch(fmt.Sprint(paramValue))
+				if len(currentSize) != 2 {
+					return qemu, fmt.Errorf("cannot parse disk params: %s %s", param, paramValue)
+				}
+				if disk.Size != currentSize[1] {
+					err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Resize(qemu.Status.VmId, disk.Name, disk.Size)
+					if err != nil {
+						return qemu, fmt.Errorf("cannot resize qemu disk: %s", err)
+					}
+				}
+			}
+		}
+		if !isDiskFound {
+			log.Warnf("Qemu %s disk is not found: %s", qemu.Metadata.Name, disk)
+
+		}
+	}
+	////////////////////////////////////
+
 	qemu, err = checkQemuSyncStatus(pClient, qemu)
 	if err != nil {
 		qemu.Status.Deploy = v1alpha1.STATUS_DEPLOY_UNKNOWN
