@@ -46,6 +46,8 @@ spec:
                   type: string
                 pool:
                   type: string
+                anti-affinity:
+                  type: string
                 vmid:
                   type: integer
                 cpu:
@@ -97,7 +99,7 @@ spec:
             status:
               type: object
               properties:
-                deploy:
+                status:
                   type: string
                 power:
                   type: string
@@ -119,9 +121,9 @@ spec:
       subresources:
         status: {}
       additionalPrinterColumns:
-        - name: Deploy
+        - name: Status
           type: string
-          jsonPath: .status.deploy
+          jsonPath: .status.status
         - name: Power
           type: string
           jsonPath: .status.power
