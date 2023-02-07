@@ -36,8 +36,8 @@ func (node *Node) GetResourceCount(resourceType string) (int, error) {
 	}
 
 	var result int
-	for _, r := range resources {
-		if r.Type == resourceType {
+	for _, resource := range resources {
+		if resource.Node == node.name && resource.Type == resourceType {
 			result++
 		}
 	}

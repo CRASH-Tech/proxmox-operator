@@ -3,7 +3,6 @@ package proxmox
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 
 	"github.com/go-resty/resty/v2"
@@ -265,31 +264,25 @@ func (cluster *Cluster) GetQemuPlacableNode(cpu, mem int) (string, error) {
 		return "", err
 	}
 
-	qemuCount := make(map[string]int)
+	var candidateNode string
+	var prevCount int
 	for _, node := range nodes {
-		count, err := cluster.Node(node.Node).GetResourceCount(RESOURCE_QEMU)
+		qemuCount, err := cluster.Node(node.Node).GetResourceCount(RESOURCE_QEMU)
 		if err != nil {
 			return "", err
 		}
-		qemuCount[node.Node] = count
-	}
 
-	keys := make([]string, 0, len(qemuCount))
-	for k := range qemuCount {
-		keys = append(keys, k)
-	}
-
-	sort.SliceStable(keys, func(i, j int) bool {
-		return qemuCount[keys[i]] < qemuCount[keys[j]]
-	})
-
-	for _, n := range keys {
-		if placable, err := cluster.Node(n).IsQemuPlacable(cpu, mem); err == nil {
-			if placable {
-				return n, nil
+		if placable, err := cluster.Node(node.Node).IsQemuPlacable(cpu, mem); err == nil && placable {
+			if candidateNode == "" || qemuCount < prevCount {
+				candidateNode = node.Node
+				prevCount = qemuCount
 			}
 		}
 	}
 
-	return "", fmt.Errorf("cannot find avialable node")
+	if candidateNode != "" {
+		return candidateNode, nil
+	} else {
+		return "", fmt.Errorf("cannot fin avialable node for")
+	}
 }
