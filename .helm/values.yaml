@@ -29,7 +29,7 @@ qemu:
       disk:
         - name: scsi0
           storage: local-lvm
-          size: 9G
+          size: 1G
         # - name: scsi1
         #   storage: local-lvm
         #   size: 32G
@@ -49,7 +49,7 @@ qemu:
         protection: 0
         #lol: lol
   example-vm:
-    count: 3
+    count: 0
     spec:
       cluster: pve-test
       #node: crash-lab
