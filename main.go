@@ -111,7 +111,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 	}
 
 	for _, qemu := range qemus {
-		switch qemu.Status.Deploy {
+		switch qemu.Status.Status {
 		case v1alpha1.STATUS_QEMU_DELETING:
 			qemu, err := deleteQemu(pClient, qemu)
 			if err != nil {
@@ -134,7 +134,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			qemu, err := getQemuPlace(pClient, qemu)
 			if err != nil {
 				log.Errorf("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
-				qemu.Status.Deploy = v1alpha1.STATUS_QEMU_ERROR
+				qemu.Status.Status = v1alpha1.STATUS_QEMU_ERROR
 				qemu = cleanQemuPlaceStatus(qemu)
 				qemu = updateQemuStatus(kClient, qemu)
 
@@ -144,7 +144,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			qemu, err = createNewQemu(pClient, qemu)
 			if err != nil {
 				log.Errorf("cannot create qemu %s: %s", qemu.Metadata.Name, err)
-				if qemu.Status.Deploy == v1alpha1.STATUS_QEMU_ERROR {
+				if qemu.Status.Status == v1alpha1.STATUS_QEMU_ERROR {
 					qemu = cleanQemuPlaceStatus(qemu)
 				}
 
@@ -153,7 +153,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				continue
 			}
 
-			qemu.Status.Deploy = v1alpha1.STATUS_QEMU_SYNCED
+			qemu.Status.Status = v1alpha1.STATUS_QEMU_SYNCED
 			qemu = updateQemuStatus(kClient, qemu)
 
 			continue
@@ -164,7 +164,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			place, err := pClient.GetQemuPlace(qemu.Metadata.Name)
 			if err != nil {
 				log.Errorf("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
-				qemu.Status.Deploy = v1alpha1.STATUS_QEMU_UNKNOWN
+				qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
 				qemu = cleanQemuPlaceStatus(qemu)
 				qemu = updateQemuStatus(kClient, qemu)
 
@@ -172,7 +172,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			}
 
 			if !place.Found {
-				qemu.Status.Deploy = v1alpha1.STATUS_QEMU_UNKNOWN
+				qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
 				qemu = cleanQemuPlaceStatus(qemu)
 				qemu = updateQemuStatus(kClient, qemu)
 
@@ -184,7 +184,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				qemu, err = getQemuPowerStatus(pClient, qemu)
 				if err != nil {
 					log.Errorf("cannot get qemu power status %s: %s", qemu.Metadata.Name, err)
-					qemu.Status.Deploy = v1alpha1.STATUS_QEMU_UNKNOWN
+					qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
 					qemu = updateQemuStatus(kClient, qemu)
 
 					continue
@@ -193,7 +193,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				qemu, err = getQemuNetStatus(pClient, qemu)
 				if err != nil {
 					log.Errorf("cannot get qemu network status %s: %s", qemu.Metadata.Name, err)
-					qemu.Status.Deploy = v1alpha1.STATUS_QEMU_UNKNOWN
+					qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
 					qemu = updateQemuStatus(kClient, qemu)
 
 					continue
@@ -202,7 +202,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				qemu = updateQemuStatus(kClient, qemu)
 			}
 
-			switch qemu.Status.Deploy {
+			switch qemu.Status.Status {
 			case v1alpha1.STATUS_QEMU_OUT_OF_SYNC, v1alpha1.STATUS_QEMU_PENDING:
 				qemu, err := setQemuConfig(pClient, qemu)
 				if err != nil {
@@ -216,7 +216,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				qemu, err = checkQemuSyncStatus(pClient, qemu)
 				if err != nil {
 					log.Errorf("cannot get qemu sync status %s: %s", qemu.Metadata.Name, err)
-					qemu.Status.Deploy = v1alpha1.STATUS_QEMU_UNKNOWN
+					qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
 					qemu = updateQemuStatus(kClient, qemu)
 
 					continue
@@ -227,7 +227,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				continue
 			}
 		default:
-			log.Warnf("unknown qemu state: %s %s", qemu.Metadata.Name, qemu.Status.Deploy)
+			log.Warnf("unknown qemu state: %s %s", qemu.Metadata.Name, qemu.Status.Status)
 
 			continue
 		}
@@ -267,7 +267,7 @@ func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, e
 	}
 
 	if place.Found {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
 		qemu.Status.Cluster = place.Cluster
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
@@ -319,25 +319,25 @@ func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, e
 func createNewQemu(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	qemuConfig, err := buildQemuConfig(pClient, qemu)
 	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_ERROR
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_ERROR
 		return qemu, fmt.Errorf("cannot build qemu config: %s", err)
 	}
 
 	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Create(qemuConfig)
 	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_ERROR
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_ERROR
 		return qemu, fmt.Errorf("cannot create qemu: %s", err)
 	}
 
 	qemuConfig, err = createQemuDisks(pClient, qemu, qemuConfig)
 	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
 		return qemu, fmt.Errorf("cannot create qemu disk: %s", err)
 	}
 
 	pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().SetConfig(qemuConfig)
 	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
 		return qemu, fmt.Errorf("cannot set qemu config: %s", err)
 	}
 
@@ -514,7 +514,7 @@ func deleteQemu(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, err
 func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	//Check deleting state
 	if qemu.Metadata.DeletionTimestamp != "" {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_DELETING
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_DELETING
 
 		return qemu, nil
 	}
@@ -542,7 +542,7 @@ func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.
 		}
 	}
 	if outOfSync {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
 		return qemu, nil
 	}
 
@@ -570,7 +570,7 @@ func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.
 		}
 		if !isDiskFound || isDiskChanged {
 			log.Warnf("Qemu %s disk is not found or changed: %s", qemu.Metadata.Name, disk)
-			qemu.Status.Deploy = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
+			qemu.Status.Status = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
 
 			return qemu, nil
 		}
@@ -586,11 +586,11 @@ func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.
 	}
 
 	if isPending {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_PENDING
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_PENDING
 		return qemu, nil
 	}
 
-	qemu.Status.Deploy = v1alpha1.STATUS_QEMU_SYNCED
+	qemu.Status.Status = v1alpha1.STATUS_QEMU_SYNCED
 
 	return qemu, nil
 }
@@ -646,7 +646,7 @@ func setQemuConfig(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, 
 
 	qemu, err = checkQemuSyncStatus(pClient, qemu)
 	if err != nil {
-		qemu.Status.Deploy = v1alpha1.STATUS_QEMU_UNKNOWN
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
 	}
 
 	return qemu, nil

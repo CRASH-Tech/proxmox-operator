@@ -62,7 +62,7 @@ type QemuNetwork struct {
 }
 
 type QemuStatus struct {
-	Deploy  string              `json:"deploy"`
+	Status  string              `json:"status"`
 	Power   string              `json:"power"`
 	Cluster string              `json:"cluster"`
 	Node    string              `json:"node"`
