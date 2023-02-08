@@ -86,6 +86,19 @@ type NodeResp struct {
 	Node           string  `json:"node"`
 }
 
+type PlaceRequest struct {
+	Name         string
+	CPU          int
+	Mem          int64
+	AntiAffinity string
+	Qemus        []PlaceRequestQemu
+}
+
+type PlaceRequestQemu struct {
+	Name         string
+	AntiAffinity string
+}
+
 func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error) {
 	resp, err := cluster.resty.R().
 		SetBody(data).
@@ -258,7 +271,7 @@ func (cluster *Cluster) GetResourceCount(resourceType string) (int, error) {
 	return result, nil
 }
 
-func (cluster *Cluster) GetQemuPlacableNode(cpu, mem int) (string, error) {
+func (cluster *Cluster) GetQemuPlacableNode(request PlaceRequest) (string, error) {
 	nodes, err := cluster.GetNodes()
 	if err != nil {
 		return "", err
@@ -267,12 +280,26 @@ func (cluster *Cluster) GetQemuPlacableNode(cpu, mem int) (string, error) {
 	var candidateNode string
 	var prevCount int
 	for _, node := range nodes {
-		qemuCount, err := cluster.Node(node.Node).GetResourceCount(RESOURCE_QEMU)
+		resources, err := cluster.Node(node.Node).GetResources(RESOURCE_QEMU)
 		if err != nil {
 			return "", err
 		}
 
-		if placable, err := cluster.Node(node.Node).IsQemuPlacable(cpu, mem); err == nil && placable {
+		var ignoreNode bool
+		for _, resource := range resources {
+			for _, qemu := range request.Qemus {
+				if qemu.Name == resource.Name && qemu.AntiAffinity == request.AntiAffinity {
+					ignoreNode = true
+				}
+			}
+		}
+
+		if ignoreNode {
+			continue
+		}
+
+		qemuCount := len(resources)
+		if placable, err := cluster.Node(node.Node).IsQemuPlacable(request.CPU, request.Mem); err == nil && placable {
 			if candidateNode == "" || qemuCount < prevCount {
 				candidateNode = node.Node
 				prevCount = qemuCount
@@ -283,6 +310,6 @@ func (cluster *Cluster) GetQemuPlacableNode(cpu, mem int) (string, error) {
 	if candidateNode != "" {
 		return candidateNode, nil
 	} else {
-		return "", fmt.Errorf("cannot fin avialable node for")
+		return "", fmt.Errorf("cannot fin avialable node")
 	}
 }

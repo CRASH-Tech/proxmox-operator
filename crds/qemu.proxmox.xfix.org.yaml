@@ -67,31 +67,11 @@ spec:
                     balloon:
                       type: integer
                 network:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                      model:
-                        type: string
-                      mac:
-                        type: string
-                      bridge:
-                        type: string
-                      tag:
-                        type: integer
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 disk:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                      storage:
-                        type: string
-                      size:
-                        type: string
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 options:
                   x-kubernetes-preserve-unknown-fields: true
                   type: object

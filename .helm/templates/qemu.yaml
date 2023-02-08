@@ -1,6 +1,7 @@
 {{- range $qemu, $qemuData := $.Values.qemu }}
 
 {{- range $i, $e := until ($qemuData.count | int) }}
+{{- $finalData := deepCopy $.Values.defaultSpec | merge ($qemuData | default dict) }}
 apiVersion: proxmox.xfix.org/v1alpha1
 kind: Qemu
 metadata:
@@ -8,7 +9,7 @@ metadata:
   finalizers:
     - resources-finalizer.proxmox-operator.xfix.org
 spec:
-  {{- $qemuData.spec | toYaml | nindent 2 }}
+  {{- $finalData.spec | toYaml | nindent 2 }}
 ---
 {{- end }}
 

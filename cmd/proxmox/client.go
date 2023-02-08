@@ -53,7 +53,7 @@ func (client *Client) Cluster(cluster string) *Cluster {
 	return &result
 }
 
-func (client *Client) GetQemuPlacableCluster(cpu, mem int) (QemuPlace, error) {
+func (client *Client) GetQemuPlacableCluster(request PlaceRequest) (QemuPlace, error) {
 	qemuCount := make(map[string]int)
 	for cluster, _ := range client.Clusters {
 		if count, err := client.Cluster(cluster).GetResourceCount(RESOURCE_QEMU); err == nil {
@@ -71,7 +71,7 @@ func (client *Client) GetQemuPlacableCluster(cpu, mem int) (QemuPlace, error) {
 	})
 
 	for _, cluster := range keys {
-		if node, err := client.Cluster(cluster).GetQemuPlacableNode(cpu, mem); err == nil && node != "" {
+		if node, err := client.Cluster(cluster).GetQemuPlacableNode(request); err == nil && node != "" {
 			if vmId, err := client.Cluster(cluster).GetNextId(); err == nil {
 				var result QemuPlace
 

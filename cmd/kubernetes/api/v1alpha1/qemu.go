@@ -32,8 +32,8 @@ type QemuSpec struct {
 	VmId         int                    `json:"vmid"`
 	CPU          QemuCPU                `json:"cpu"`
 	Memory       QemuMemory             `json:"memory"`
-	Disk         []QemuDisk             `json:"disk"`
-	Network      []QemuNetwork          `json:"network"`
+	Disk         map[string]QemuDisk    `json:"disk"`
+	Network      map[string]QemuNetwork `json:"network"`
 	Options      map[string]interface{} `json:"options"`
 }
 
@@ -44,21 +44,19 @@ type QemuCPU struct {
 }
 
 type QemuDisk struct {
-	Name    string `json:"name"`
 	Size    string `json:"size"`
 	Storage string `json:"storage"`
 }
 
 type QemuMemory struct {
-	Balloon int `json:"balloon"`
-	Size    int `json:"size"`
+	Balloon int64 `json:"balloon"`
+	Size    int64 `json:"size"`
 }
 
 type QemuNetwork struct {
 	Bridge string `json:"bridge"`
 	Mac    string `json:"mac"`
 	Model  string `json:"model"`
-	Name   string `json:"name"`
 	Tag    int    `json:"tag"`
 }
 
