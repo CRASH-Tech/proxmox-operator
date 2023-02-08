@@ -266,7 +266,7 @@ func updateQemuStatus(kClient *kuberentes.Client, qemu v1alpha1.Qemu) v1alpha1.Q
 }
 
 func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu, qemus []v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	placeRequest := buildPlaceRequest(qemu, qemus)
+	placeRequest := buildPlaceRequest(qemu)
 	place, err := pClient.GetQemuPlace(qemu.Metadata.Name)
 	if err != nil {
 		return qemu, fmt.Errorf("cannot check is qemu already exist: %s", err)
@@ -457,21 +457,13 @@ func buildDiskConfig(qemu v1alpha1.Qemu, diskName string, disk v1alpha1.QemuDisk
 	return diskConfig, nil
 }
 
-func buildPlaceRequest(qemu v1alpha1.Qemu, qemus []v1alpha1.Qemu) proxmox.PlaceRequest {
+func buildPlaceRequest(qemu v1alpha1.Qemu) proxmox.PlaceRequest {
 	var result proxmox.PlaceRequest
 
 	result.Name = qemu.Metadata.Name
 	result.CPU = qemu.Spec.CPU.Sockets + qemu.Spec.CPU.Cores
 	result.Mem = qemu.Spec.Memory.Size
 	result.AntiAffinity = qemu.Spec.AntiAffinity
-
-	for _, q := range qemus {
-		tmp := proxmox.PlaceRequestQemu{
-			Name:         q.Metadata.Name,
-			AntiAffinity: q.Spec.AntiAffinity,
-		}
-		result.Qemus = append(result.Qemus, tmp)
-	}
 
 	return result
 }

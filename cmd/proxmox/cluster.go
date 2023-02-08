@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/utils/strings/slices"
 )
 
 const (
@@ -50,6 +52,7 @@ type Resource struct {
 	Diskread   int64   `json:"diskread,omitempty"`
 	Maxmem     int64   `json:"maxmem,omitempty"`
 	Template   int     `json:"template,omitempty"`
+	Tags       string  `json:"tags,omitempty"`
 	Status     string  `json:"status"`
 	Netin      int64   `json:"netin,omitempty"`
 	Maxcpu     int     `json:"maxcpu,omitempty"`
@@ -90,12 +93,6 @@ type PlaceRequest struct {
 	Name         string
 	CPU          int
 	Mem          int64
-	AntiAffinity string
-	Qemus        []PlaceRequestQemu
-}
-
-type PlaceRequestQemu struct {
-	Name         string
 	AntiAffinity string
 }
 
@@ -287,10 +284,9 @@ func (cluster *Cluster) GetQemuPlacableNode(request PlaceRequest) (string, error
 
 		var ignoreNode bool
 		for _, resource := range resources {
-			for _, qemu := range request.Qemus {
-				if qemu.Name == resource.Name && qemu.AntiAffinity == request.AntiAffinity {
-					ignoreNode = true
-				}
+			tags := strings.Split(resource.Tags, ";")
+			if slices.Contains(tags, fmt.Sprintf("anti-affinity.%s", request.AntiAffinity)) {
+				ignoreNode = true
 			}
 		}
 
