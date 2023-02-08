@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/sirupsen/logrus v1.9.0
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/apimachinery v0.26.0
 	k8s.io/client-go v0.26.0

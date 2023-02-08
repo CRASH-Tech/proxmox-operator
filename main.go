@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
@@ -15,6 +16,7 @@ import (
 	"github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api/v1alpha1"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
@@ -155,6 +157,9 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 
 			qemu.Status.Status = v1alpha1.STATUS_QEMU_SYNCED
 			qemu = updateQemuStatus(kClient, qemu)
+
+			// Need by proxmox api delay
+			time.Sleep(time.Second * 10)
 
 			continue
 		case v1alpha1.STATUS_QEMU_SYNCED,
@@ -386,6 +391,17 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 		result[k] = v
 	}
 
+	var tags []string
+	tags = append(tags, qemu.Spec.Tags...)
+
+	if qemu.Spec.AntiAffinity != "" {
+		tags = append(tags, fmt.Sprintf("anti-affinity.%s", qemu.Spec.AntiAffinity))
+	}
+
+	if len(tags) > 0 {
+		result["tags"] = strings.Join(tags, ";")
+	}
+
 	return result, nil
 }
 
@@ -552,15 +568,33 @@ func checkQemuSyncStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.
 
 	var outOfSync bool
 	for k, v := range designConfig {
+		v := strings.TrimRight(fmt.Sprint(v), "\n") // FUCK YOU PROXMOX!
+
 		if k == "node" || k == "vmid" {
 			continue
 		}
 
-		if fmt.Sprint(currentConfig[k]) != fmt.Sprint(v) {
-			log.Warnf("Qemu %s is out of sync, %s: %v != %v", qemu.Metadata.Name, k, currentConfig[k], v)
+		if k == "tags" {
+			designTags := strings.Split(v, ";")
+			currentTags := strings.Split(fmt.Sprint(currentConfig["tags"]), ";")
+
+			for _, tag := range designTags {
+				if !slices.Contains(currentTags, tag) {
+					log.Warnf("Qemu %s is out of sync, tag %s is not found", qemu.Metadata.Name, tag)
+					qemu.Status.Status = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
+					return qemu, nil
+				}
+			}
+
+			continue
+		}
+
+		if fmt.Sprint(currentConfig[k]) != v {
+			log.Warnf("Qemu %s is out of sync, %s: %s != %s", qemu.Metadata.Name, k, currentConfig[k], v)
 			outOfSync = true
 		}
 	}
+
 	if outOfSync {
 		qemu.Status.Status = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
 		return qemu, nil

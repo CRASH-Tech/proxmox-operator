@@ -35,6 +35,7 @@ type QemuSpec struct {
 	Disk         map[string]QemuDisk    `json:"disk"`
 	Network      map[string]QemuNetwork `json:"network"`
 	Options      map[string]interface{} `json:"options"`
+	Tags         []string               `json:"tags"`
 }
 
 type QemuCPU struct {

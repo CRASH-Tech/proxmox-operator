@@ -29,6 +29,9 @@ spec:
     scsi0:
       storage: local-lvm
       size: 9G
+  tags:
+    - test1
+    - test2
   options:
     ostype: "l26"
     bios: "seabios"

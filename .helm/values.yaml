@@ -15,14 +15,18 @@ qemu:
       memory:
         size: 2048
         balloon: 2048
+      tags:
+        - test1
+        - test2
+        - test3
   ingress:
-    count: 3
+    count: 0
     spec:
       cluster: pve-test
       #node: crash-lab
       #vmid: 222
       pool: prod
-      anti-affinity: masters
+      anti-affinity: ingress
       autostart: true
       autostop: true
       cpu:
@@ -32,7 +36,7 @@ qemu:
         size: 2048
         balloon: 2048
   workers:
-    count: 6
+    count: 0
     spec:
       cluster: pve-test
       #node: crash-lab

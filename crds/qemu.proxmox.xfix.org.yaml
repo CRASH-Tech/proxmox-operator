@@ -72,6 +72,10 @@ spec:
                 disk:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
+                tags:
+                  type: array
+                  items:
+                    type: string
                 options:
                   x-kubernetes-preserve-unknown-fields: true
                   type: object
