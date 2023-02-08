@@ -265,10 +265,10 @@ func cleanQemuPlaceStatus(qemu v1alpha1.Qemu) v1alpha1.Qemu {
 }
 
 func updateQemuStatus(kClient *kuberentes.Client, qemu v1alpha1.Qemu) v1alpha1.Qemu {
-	var err error
-	qemu, err = kClient.V1alpha1().Qemu().UpdateStatus(qemu)
+	name := qemu.Metadata.Name
+	qemu, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
-		log.Errorf("cannot update qemu status %s: %s", qemu.Metadata.Name, err)
+		log.Errorf("cannot update qemu status %s: %s", name, err)
 	}
 	return qemu
 }
