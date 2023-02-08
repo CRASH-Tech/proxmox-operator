@@ -1,6 +1,6 @@
 qemu:
   masters:
-    count: 3
+    count: 6
     spec:
       cluster: pve-test
       #node: crash-lab

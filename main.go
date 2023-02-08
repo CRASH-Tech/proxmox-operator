@@ -143,6 +143,14 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				continue
 			}
 
+			if qemu.Metadata.DeletionTimestamp != "" {
+				qemu.Status.Status = v1alpha1.STATUS_QEMU_DELETING
+				qemu = cleanQemuPlaceStatus(qemu)
+				qemu = updateQemuStatus(kClient, qemu)
+
+				continue
+			}
+
 			qemu, err = createNewQemu(pClient, qemu)
 			if err != nil {
 				log.Errorf("cannot create qemu %s: %s", qemu.Metadata.Name, err)
