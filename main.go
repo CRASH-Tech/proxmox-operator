@@ -259,7 +259,7 @@ func updateQemuPlaceStatus(place proxmox.QemuPlace, qemu v1alpha1.Qemu) v1alpha1
 func cleanQemuPlaceStatus(qemu v1alpha1.Qemu) v1alpha1.Qemu {
 	qemu.Status.Cluster = ""
 	qemu.Status.Node = ""
-	qemu.Status.VmId = -1
+	qemu.Status.VmId = 0
 
 	return qemu
 }
@@ -520,7 +520,7 @@ func getQemuNetStatus(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qem
 }
 
 func deleteQemu(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
-	if qemu.Status.Cluster == "" || qemu.Status.Node == "" || qemu.Status.VmId == -1 {
+	if qemu.Status.Cluster == "" || qemu.Status.Node == "" || qemu.Status.VmId == 0 {
 		return qemu, fmt.Errorf("unknown qemu status")
 	}
 
