@@ -46,6 +46,8 @@ spec:
                   type: string
                 pool:
                   type: string
+                anti-affinity:
+                  type: string
                 vmid:
                   type: integer
                 cpu:
@@ -65,31 +67,15 @@ spec:
                     balloon:
                       type: integer
                 network:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                      model:
-                        type: string
-                      mac:
-                        type: string
-                      bridge:
-                        type: string
-                      tag:
-                        type: integer
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 disk:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                tags:
                   type: array
                   items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                      storage:
-                        type: string
-                      size:
-                        type: string
+                    type: string
                 options:
                   x-kubernetes-preserve-unknown-fields: true
                   type: object
@@ -97,7 +83,7 @@ spec:
             status:
               type: object
               properties:
-                deploy:
+                status:
                   type: string
                 power:
                   type: string
@@ -119,9 +105,9 @@ spec:
       subresources:
         status: {}
       additionalPrinterColumns:
-        - name: Deploy
+        - name: Status
           type: string
-          jsonPath: .status.deploy
+          jsonPath: .status.status
         - name: Power
           type: string
           jsonPath: .status.power

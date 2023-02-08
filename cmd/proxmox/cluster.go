@@ -3,11 +3,12 @@ package proxmox
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/utils/strings/slices"
 )
 
 const (
@@ -51,6 +52,7 @@ type Resource struct {
 	Diskread   int64   `json:"diskread,omitempty"`
 	Maxmem     int64   `json:"maxmem,omitempty"`
 	Template   int     `json:"template,omitempty"`
+	Tags       string  `json:"tags,omitempty"`
 	Status     string  `json:"status"`
 	Netin      int64   `json:"netin,omitempty"`
 	Maxcpu     int     `json:"maxcpu,omitempty"`
@@ -85,6 +87,13 @@ type NodeResp struct {
 	Status         string  `json:"status"`
 	Maxcpu         int     `json:"maxcpu"`
 	Node           string  `json:"node"`
+}
+
+type PlaceRequest struct {
+	Name         string
+	CPU          int
+	Mem          int64
+	AntiAffinity string
 }
 
 func (cluster *Cluster) GetReq(apiPath string, data interface{}) ([]byte, error) {
@@ -259,37 +268,44 @@ func (cluster *Cluster) GetResourceCount(resourceType string) (int, error) {
 	return result, nil
 }
 
-func (cluster *Cluster) GetQemuPlacableNode(cpu, mem int) (string, error) {
+func (cluster *Cluster) GetQemuPlacableNode(request PlaceRequest) (string, error) {
 	nodes, err := cluster.GetNodes()
 	if err != nil {
 		return "", err
 	}
 
-	qemuCount := make(map[string]int)
+	var candidateNode string
+	var prevCount int
 	for _, node := range nodes {
-		count, err := cluster.Node(node.Node).GetResourceCount(RESOURCE_QEMU)
+		resources, err := cluster.Node(node.Node).GetResources(RESOURCE_QEMU)
 		if err != nil {
 			return "", err
 		}
-		qemuCount[node.Node] = count
-	}
 
-	keys := make([]string, 0, len(qemuCount))
-	for k := range qemuCount {
-		keys = append(keys, k)
-	}
+		var ignoreNode bool
+		for _, resource := range resources {
+			tags := strings.Split(resource.Tags, ";")
+			if slices.Contains(tags, fmt.Sprintf("anti-affinity.%s", request.AntiAffinity)) {
+				ignoreNode = true
+			}
+		}
 
-	sort.SliceStable(keys, func(i, j int) bool {
-		return qemuCount[keys[i]] < qemuCount[keys[j]]
-	})
+		if ignoreNode {
+			continue
+		}
 
-	for _, n := range keys {
-		if placable, err := cluster.Node(n).IsQemuPlacable(cpu, mem); err == nil {
-			if placable {
-				return n, nil
+		qemuCount := len(resources)
+		if placable, err := cluster.Node(node.Node).IsQemuPlacable(request.CPU, request.Mem); err == nil && placable {
+			if candidateNode == "" || qemuCount < prevCount {
+				candidateNode = node.Node
+				prevCount = qemuCount
 			}
 		}
 	}
 
-	return "", fmt.Errorf("cannot find avialable node")
+	if candidateNode != "" {
+		return candidateNode, nil
+	} else {
+		return "", fmt.Errorf("cannot fin avialable node")
+	}
 }

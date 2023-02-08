@@ -36,8 +36,8 @@ func (node *Node) GetResourceCount(resourceType string) (int, error) {
 	}
 
 	var result int
-	for _, r := range resources {
-		if r.Type == resourceType {
+	for _, resource := range resources {
+		if resource.Node == node.name && resource.Type == resourceType {
 			result++
 		}
 	}
@@ -45,13 +45,13 @@ func (node *Node) GetResourceCount(resourceType string) (int, error) {
 	return result, nil
 }
 
-func (node *Node) IsQemuPlacable(cpu, mem int) (bool, error) {
+func (node *Node) IsQemuPlacable(cpu int, mem int64) (bool, error) {
 	nodeResources, err := node.cluster.GetNode(node.name)
 	if err != nil {
 		return false, err
 	}
 
-	if (float64(nodeResources.Maxcpu)-nodeResources.CPU) > float64(cpu) && (nodeResources.Maxmem-nodeResources.Mem) > int64(mem) {
+	if (float64(nodeResources.Maxcpu)-nodeResources.CPU) > float64(cpu) && (nodeResources.Maxmem-nodeResources.Mem > mem) {
 		return true, nil
 	}
 

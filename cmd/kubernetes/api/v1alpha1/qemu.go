@@ -3,13 +3,13 @@ package v1alpha1
 import "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api"
 
 const (
-	STATUS_DEPLOY_EMPTY      = ""
-	STATUS_DEPLOY_SYNCED     = "SYNCED"
-	STATUS_DEPLOY_NOT_SYNCED = "OUT OF SYNC"
-	STATUS_DEPLOY_PENDING    = "PENDING"
-	STATUS_DEPLOY_ERROR      = "ERROR"
-	STATUS_DEPLOY_DELETING   = "DELETING"
-	STATUS_DEPLOY_UNKNOWN    = "UNKNOWN"
+	STATUS_QEMU_EMPTY       = ""
+	STATUS_QEMU_SYNCED      = "SYNCED"
+	STATUS_QEMU_OUT_OF_SYNC = "OUT OF SYNC"
+	STATUS_QEMU_PENDING     = "PENDING"
+	STATUS_QEMU_ERROR       = "ERROR"
+	STATUS_QEMU_DELETING    = "DELETING"
+	STATUS_QEMU_UNKNOWN     = "UNKNOWN"
 
 	STATUS_POWER_ON      = "ON"
 	STATUS_POWER_OFF     = "OFF"
@@ -23,17 +23,19 @@ type Qemu struct {
 }
 
 type QemuSpec struct {
-	Autostart bool                   `json:"autostart"`
-	Autostop  bool                   `json:"autostop"`
-	Cluster   string                 `json:"cluster"`
-	Node      string                 `json:"node"`
-	Pool      string                 `json:"pool"`
-	VmId      int                    `json:"vmid"`
-	CPU       QemuCPU                `json:"cpu"`
-	Memory    QemuMemory             `json:"memory"`
-	Disk      []QemuDisk             `json:"disk"`
-	Network   []QemuNetwork          `json:"network"`
-	Options   map[string]interface{} `json:"options"`
+	Autostart    bool                   `json:"autostart"`
+	Autostop     bool                   `json:"autostop"`
+	Cluster      string                 `json:"cluster"`
+	Node         string                 `json:"node"`
+	Pool         string                 `json:"pool"`
+	AntiAffinity string                 `json:"anti-affinity"`
+	VmId         int                    `json:"vmid"`
+	CPU          QemuCPU                `json:"cpu"`
+	Memory       QemuMemory             `json:"memory"`
+	Disk         map[string]QemuDisk    `json:"disk"`
+	Network      map[string]QemuNetwork `json:"network"`
+	Options      map[string]interface{} `json:"options"`
+	Tags         []string               `json:"tags"`
 }
 
 type QemuCPU struct {
@@ -43,26 +45,24 @@ type QemuCPU struct {
 }
 
 type QemuDisk struct {
-	Name    string `json:"name"`
 	Size    string `json:"size"`
 	Storage string `json:"storage"`
 }
 
 type QemuMemory struct {
-	Balloon int `json:"balloon"`
-	Size    int `json:"size"`
+	Balloon int64 `json:"balloon"`
+	Size    int64 `json:"size"`
 }
 
 type QemuNetwork struct {
 	Bridge string `json:"bridge"`
 	Mac    string `json:"mac"`
 	Model  string `json:"model"`
-	Name   string `json:"name"`
 	Tag    int    `json:"tag"`
 }
 
 type QemuStatus struct {
-	Deploy  string              `json:"deploy"`
+	Status  string              `json:"status"`
 	Power   string              `json:"power"`
 	Cluster string              `json:"cluster"`
 	Node    string              `json:"node"`

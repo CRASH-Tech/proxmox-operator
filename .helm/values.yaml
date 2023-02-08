@@ -1,105 +1,95 @@
 qemu:
-  example-qemu:
-    count: 0
+  masters:
+    count: 6
     spec:
       cluster: pve-test
       #node: crash-lab
       #vmid: 222
       pool: prod
+      anti-affinity: masters
       autostart: true
       autostop: true
       cpu:
-        type: host
         sockets: 1
         cores: 1
       memory:
         size: 2048
         balloon: 2048
-      network:
-        - name: net0
-          model: virtio
-          #mac: A2:7B:45:48:9C:E6
-          bridge: vmbr0
-          tag: 103
-        # - name: net1
-        #   model: virtio
-        #   #mac: A2:7B:45:48:9C:E6
-        #   bridge: vmbr0
-        #   tag: 104
-      disk:
-        - name: scsi0
-          storage: local-lvm
-          size: 1G
-        # - name: scsi1
-        #   storage: local-lvm
-        #   size: 32G
-      options:
-        ostype: "l26"
-        bios: "seabios"
-        smbios1: "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1"
-        scsihw: "virtio-scsi-pci"
-        boot: "order=net0;ide2;scsi0"
-        ide2: "none,media=cdrom"
-        hotplug: "network,disk,usb"
-        tablet: 1
-        onboot: 0
-        kvm: 1
-        agent: "0"
-        numa: 1
-        protection: 0
-        #lol: lol
-  example-vm:
-    count: 0
+      tags:
+        - test1
+        - test2
+        - test3
+  ingress:
+    count: 3
     spec:
       cluster: pve-test
       #node: crash-lab
       #vmid: 222
       pool: prod
+      anti-affinity: ingress
       autostart: true
       autostop: true
       cpu:
-        type: host
         sockets: 1
         cores: 1
       memory:
         size: 2048
         balloon: 2048
-      network:
-        - name: net0
-          model: virtio
-          #mac: A2:7B:45:48:9C:E6
-          bridge: vmbr0
-          tag: 103
-        # - name: net1
-        #   model: virtio
-        #   #mac: A2:7B:45:48:9C:E6
-        #   bridge: vmbr0
-        #   tag: 104
-      disk:
-        - name: scsi0
-          storage: local-lvm
-          size: 15G
-        - name: scsi1
-          storage: local-lvm
-          size: 6G
-        - name: scsi2
-          storage: local-lvm
-          size: 2G
-        - name: scsi3
-          storage: local-lvm
-          size: 2G
-      options:
-        ostype: "l26"
-        bios: "seabios"
-        smbios1: "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1"
-        scsihw: "virtio-scsi-pci"
-        boot: "order=net0;ide2;scsi0"
-        ide2: "none,media=cdrom"
-        hotplug: "network,disk,usb"
-        tablet: 1
-        onboot: 0
-        kvm: 1
-        agent: "0"
-        numa: 1
-        protection: 0
-        #lol: lol
+  workers:
+    count: 3
+    spec:
+      cluster: pve-test
+      #node: crash-lab
+      #vmid: 222
+      pool: prod
+      #anti-affinity: masters
+      autostart: true
+      autostop: true
+      cpu:
+        sockets: 1
+        cores: 1
+      memory:
+        size: 2048
+        balloon: 2048
+
+defaultSpec:
+  spec:
+    #cluster: pve-test
+    #node: crash-lab
+    #vmid: 222
+    pool: prod
+    anti-affinity: ""
+    autostart: false
+    autostop: false
+    cpu:
+      type: host
+      sockets: 1
+      cores: 1
+    memory:
+      size: 1024
+      balloon: 1024
+    network:
+      net0:
+        model: virtio
+        #mac: A2:7B:45:48:9C:E6
+        bridge: vmbr0
+        tag: 103
+    disk:
+      scsi0:
+        storage: local-lvm
+        size: 1G
+    options:
+      ostype: "l26"
+      bios: "seabios"
+      smbios1: "uuid=3ae878b3-a77e-4a4a-adc6-14ee88350d36,manufacturer=MTIz,product=MTIz,version=MTIz,serial=MTIz,sku=MTIz,family=MTIz,base64=1"
+      scsihw: "virtio-scsi-pci"
+      boot: "order=net0;ide2;scsi0"
+      ide2: "none,media=cdrom"
+      hotplug: "network,disk,usb"
+      tablet: 1
+      onboot: 0
+      kvm: 1
+      agent: "0"
+      numa: 0
+      protection: 0
+      #lol: lol
