@@ -227,7 +227,11 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			err = pClient.Cluster(templatePlace.Cluster).Node(templatePlace.Node).Qemu().Clone(qemu.Metadata.Name, templatePlace, targetPlace)
 			if err != nil {
 				log.Error(err)
-
+				qemu.Status.Status = v1alpha1.STATUS_QEMU_EMPTY
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
 				continue
 			}
 
