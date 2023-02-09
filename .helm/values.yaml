@@ -2,6 +2,7 @@ qemu:
   masters:
     count: 3
     spec:
+      clone: ubuntu-template
       cluster: pve-test
       #node: crash-lab
       #vmid: 222
@@ -20,7 +21,7 @@ qemu:
         - test2
         - test3
   ingress:
-    count: 3
+    count: 0
     spec:
       cluster: pve-test
       #node: crash-lab
@@ -36,7 +37,7 @@ qemu:
         size: 2048
         balloon: 2048
   workers:
-    count: 9
+    count: 0
     spec:
       cluster: pve-test
       #node: crash-lab
@@ -77,7 +78,7 @@ defaultSpec:
     disk:
       scsi0:
         storage: local-lvm
-        size: 1G
+        size: 3G
     options:
       ostype: "l26"
       bios: "seabios"

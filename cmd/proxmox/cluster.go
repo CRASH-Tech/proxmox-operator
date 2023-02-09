@@ -309,3 +309,32 @@ func (cluster *Cluster) GetQemuPlacableNode(request PlaceRequest) (string, error
 		return "", fmt.Errorf("cannot fin avialable node")
 	}
 }
+
+func (cluster *Cluster) FindQemuPlace(name string) (QemuPlace, error) {
+	var place QemuPlace
+
+	nodes, err := cluster.GetNodes()
+	if err != nil {
+		return place, err
+	}
+
+	for _, node := range nodes {
+		resources, err := cluster.Node(node.Node).GetResources(RESOURCE_QEMU)
+		if err != nil {
+			return place, err
+		}
+
+		for _, resource := range resources {
+			if resource.Name == name {
+				place.Found = true
+				place.Cluster = cluster.name
+				place.Node = node.Node
+				place.VmId = resource.Vmid
+
+				return place, nil
+			}
+		}
+	}
+
+	return place, fmt.Errorf("cannot find qemu place: %s", name)
+}

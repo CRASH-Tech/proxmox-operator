@@ -145,7 +145,17 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				continue
 			}
 
-			qemu, err := getQemuPlace(pClient, qemu, qemus)
+			if qemu.Spec.Clone != "" {
+				qemu.Status.Status = v1alpha1.STATUS_QEMU_CLONING
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
+
+				continue
+			}
+
+			qemu, err := getQemuPlace(pClient, qemu)
 			if err != nil {
 				log.Errorf("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
 
@@ -173,6 +183,63 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 					return
 				}
 
+				continue
+			}
+
+			qemu.Status.Status = v1alpha1.STATUS_QEMU_SYNCED
+			qemu, err = updateQemuStatus(kClient, qemu)
+			if err != nil {
+				return
+			}
+
+			// Need by proxmox api delay
+			time.Sleep(time.Second * 10)
+
+			continue
+		case v1alpha1.STATUS_QEMU_CLONING:
+			if qemu.Spec.Cluster == "" {
+				log.Error("no cluster set for clone operation")
+
+				continue
+			}
+
+			templatePlace, err := pClient.Cluster(qemu.Spec.Cluster).FindQemuPlace(qemu.Spec.Clone)
+			if err != nil {
+				log.Error(err)
+
+				continue
+			}
+
+			qemu, err = getQemuPlace(pClient, qemu)
+			if err != nil {
+				log.Error(err)
+
+				continue
+			}
+
+			targetPlace := proxmox.QemuPlace{
+				Found:   true,
+				Cluster: qemu.Status.Cluster,
+				Node:    qemu.Status.Node,
+				VmId:    qemu.Status.VmId,
+			}
+
+			err = pClient.Cluster(templatePlace.Cluster).Node(templatePlace.Node).Qemu().Clone(qemu.Metadata.Name, templatePlace, targetPlace)
+			if err != nil {
+				log.Error(err)
+
+				continue
+			}
+
+			qemu.Status.Status = v1alpha1.STATUS_QEMU_OUT_OF_SYNC
+			qemu, err = updateQemuStatus(kClient, qemu)
+			if err != nil {
+				return
+			}
+
+			qemu, err = setQemuConfig(pClient, qemu)
+			if err != nil {
+				log.Errorf("cannot set qemu config %s: %s", qemu.Metadata.Name, err)
 				continue
 			}
 
@@ -316,7 +383,7 @@ func updateQemuStatus(kClient *kuberentes.Client, qemu v1alpha1.Qemu) (v1alpha1.
 	return qemu, nil
 }
 
-func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu, qemus []v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	placeRequest := buildPlaceRequest(qemu)
 	place, err := pClient.GetQemuPlace(qemu.Metadata.Name)
 	if err != nil {
