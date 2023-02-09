@@ -86,6 +86,27 @@ func (qemu *Qemu) Create(qemuConfig QemuConfig) error {
 	return nil
 }
 
+func (qemu *Qemu) Clone(name string, templatePlace, targetPlace QemuPlace) error {
+	log.Infof("Cloning qemu VM, cluster: %s, node: %s vmid: %d -> cluster: %s, node: %s vmid: %d name: %s",
+		templatePlace.Cluster,
+		templatePlace.Node,
+		templatePlace.VmId,
+		targetPlace.Cluster,
+		targetPlace.Node,
+		targetPlace.VmId,
+		name,
+	)
+
+	data := fmt.Sprintf(`{"vmid":"%d", "newid":"%d", "name":"%s", "target":"%s", "full":true}`, templatePlace.VmId, targetPlace.VmId, name, targetPlace.Node)
+	apiPath := fmt.Sprintf("/nodes/%s/qemu/%d/clone", templatePlace.Node, templatePlace.VmId)
+	err := qemu.node.cluster.PostReq(apiPath, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (qemu *Qemu) SetConfig(qemuConfig QemuConfig) error {
 	log.Infof("Set qemu VM config, cluster: %s, node: %s config: %+v", qemu.node.cluster.name, qemu.node.name, qemuConfig)
 	err := checkQemuConfig(qemuConfig)

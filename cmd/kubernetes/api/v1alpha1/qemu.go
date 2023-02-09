@@ -7,6 +7,7 @@ const (
 	STATUS_QEMU_SYNCED      = "SYNCED"
 	STATUS_QEMU_OUT_OF_SYNC = "OUT OF SYNC"
 	STATUS_QEMU_PENDING     = "PENDING"
+	STATUS_QEMU_CLONING     = "CLONING"
 	STATUS_QEMU_ERROR       = "ERROR"
 	STATUS_QEMU_DELETING    = "DELETING"
 	STATUS_QEMU_UNKNOWN     = "UNKNOWN"
@@ -28,6 +29,7 @@ type QemuSpec struct {
 	Cluster      string                 `json:"cluster"`
 	Node         string                 `json:"node"`
 	Pool         string                 `json:"pool"`
+	Clone        string                 `json:"clone"`
 	AntiAffinity string                 `json:"anti-affinity"`
 	VmId         int                    `json:"vmid"`
 	CPU          QemuCPU                `json:"cpu"`
