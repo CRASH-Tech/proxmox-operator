@@ -133,20 +133,21 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			continue
 		case v1alpha1.STATUS_QEMU_EMPTY,
 			v1alpha1.STATUS_QEMU_ERROR:
-			qemu, err := getQemuPlace(pClient, qemu, qemus)
-			if err != nil {
-				log.Errorf("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
-				qemu.Status.Status = v1alpha1.STATUS_QEMU_ERROR
-				qemu = cleanQemuPlaceStatus(qemu)
-				qemu = updateQemuStatus(kClient, qemu)
+			if qemu.Status.Status == v1alpha1.STATUS_QEMU_EMPTY && qemu.Metadata.DeletionTimestamp != "" {
+				qemu.RemoveFinalizers()
+				_, err = kClient.V1alpha1().Qemu().Patch(qemu)
+				if err != nil {
+					log.Errorf("cannot patch qemu cr %s: %s", qemu.Metadata.Name, err)
+
+					continue
+				}
 
 				continue
 			}
 
-			if qemu.Metadata.DeletionTimestamp != "" {
-				qemu.Status.Status = v1alpha1.STATUS_QEMU_DELETING
-				qemu = cleanQemuPlaceStatus(qemu)
-				qemu = updateQemuStatus(kClient, qemu)
+			qemu, err := getQemuPlace(pClient, qemu, qemus)
+			if err != nil {
+				log.Errorf("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
 
 				continue
 			}
@@ -158,13 +159,19 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 					qemu = cleanQemuPlaceStatus(qemu)
 				}
 
-				qemu = updateQemuStatus(kClient, qemu)
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
 
 				continue
 			}
 
 			qemu.Status.Status = v1alpha1.STATUS_QEMU_SYNCED
-			qemu = updateQemuStatus(kClient, qemu)
+			qemu, err = updateQemuStatus(kClient, qemu)
+			if err != nil {
+				return
+			}
 
 			// Need by proxmox api delay
 			time.Sleep(time.Second * 10)
@@ -179,7 +186,10 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				log.Errorf("cannot get qemu place %s: %s", qemu.Metadata.Name, err)
 				qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
 				qemu = cleanQemuPlaceStatus(qemu)
-				qemu = updateQemuStatus(kClient, qemu)
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
 
 				continue
 			}
@@ -187,18 +197,27 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			if !place.Found {
 				qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
 				qemu = cleanQemuPlaceStatus(qemu)
-				qemu = updateQemuStatus(kClient, qemu)
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
 
 				continue
 			} else {
 				qemu = updateQemuPlaceStatus(place, qemu)
-				qemu = updateQemuStatus(kClient, qemu)
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
 
 				qemu, err = getQemuPowerStatus(pClient, qemu)
 				if err != nil {
 					log.Errorf("cannot get qemu power status %s: %s", qemu.Metadata.Name, err)
 					qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
-					qemu = updateQemuStatus(kClient, qemu)
+					qemu, err = updateQemuStatus(kClient, qemu)
+					if err != nil {
+						return
+					}
 
 					continue
 				}
@@ -207,12 +226,18 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				if err != nil {
 					log.Errorf("cannot get qemu network status %s: %s", qemu.Metadata.Name, err)
 					qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
-					qemu = updateQemuStatus(kClient, qemu)
+					qemu, err = updateQemuStatus(kClient, qemu)
+					if err != nil {
+						return
+					}
 
 					continue
 				}
 
-				qemu = updateQemuStatus(kClient, qemu)
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
 			}
 
 			switch qemu.Status.Status {
@@ -222,7 +247,10 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 					log.Errorf("cannot set qemu config %s: %s", qemu.Metadata.Name, err)
 				}
 
-				qemu = updateQemuStatus(kClient, qemu)
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
 
 				continue
 			default:
@@ -230,12 +258,18 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				if err != nil {
 					log.Errorf("cannot get qemu sync status %s: %s", qemu.Metadata.Name, err)
 					qemu.Status.Status = v1alpha1.STATUS_QEMU_UNKNOWN
-					qemu = updateQemuStatus(kClient, qemu)
+					qemu, err = updateQemuStatus(kClient, qemu)
+					if err != nil {
+						return
+					}
 
 					continue
 				}
 
-				qemu = updateQemuStatus(kClient, qemu)
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
 
 				continue
 			}
@@ -264,13 +298,13 @@ func cleanQemuPlaceStatus(qemu v1alpha1.Qemu) v1alpha1.Qemu {
 	return qemu
 }
 
-func updateQemuStatus(kClient *kuberentes.Client, qemu v1alpha1.Qemu) v1alpha1.Qemu {
+func updateQemuStatus(kClient *kuberentes.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	name := qemu.Metadata.Name
 	qemu, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
-		log.Errorf("cannot update qemu status %s: %s", name, err)
+		return qemu, fmt.Errorf("cannot update qemu status %s: %s", name, err)
 	}
-	return qemu
+	return qemu, nil
 }
 
 func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu, qemus []v1alpha1.Qemu) (v1alpha1.Qemu, error) {
