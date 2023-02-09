@@ -20,7 +20,7 @@ qemu:
         - test2
         - test3
   ingress:
-    count: 0
+    count: 3
     spec:
       cluster: pve-test
       #node: crash-lab
@@ -36,7 +36,7 @@ qemu:
         size: 2048
         balloon: 2048
   workers:
-    count: 0
+    count: 9
     spec:
       cluster: pve-test
       #node: crash-lab

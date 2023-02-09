@@ -152,6 +152,15 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 				continue
 			}
 
+			if qemu.Status.Status == v1alpha1.STATUS_QEMU_OUT_OF_SYNC {
+				qemu, err = updateQemuStatus(kClient, qemu)
+				if err != nil {
+					return
+				}
+
+				continue
+			}
+
 			qemu, err = createNewQemu(pClient, qemu)
 			if err != nil {
 				log.Errorf("cannot create qemu %s: %s", qemu.Metadata.Name, err)
@@ -320,7 +329,7 @@ func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu, qemus []v1alpha1.
 		qemu.Status.Node = place.Node
 		qemu.Status.VmId = place.VmId
 
-		return qemu, fmt.Errorf("qemu already exist, skip creation, place: %v", place)
+		return qemu, nil
 	}
 
 	if qemu.Spec.Cluster == "" && qemu.Spec.Pool == "" {
