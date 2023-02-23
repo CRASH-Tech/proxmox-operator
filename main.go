@@ -131,8 +131,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			}
 
 			continue
-		case v1alpha1.STATUS_QEMU_EMPTY,
-			v1alpha1.STATUS_QEMU_ERROR:
+		case v1alpha1.STATUS_QEMU_EMPTY:
 			if qemu.Status.Status == v1alpha1.STATUS_QEMU_EMPTY && qemu.Metadata.DeletionTimestamp != "" {
 				qemu.RemoveFinalizers()
 				_, err = kClient.V1alpha1().Qemu().Patch(qemu)
@@ -174,7 +173,7 @@ func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
 			qemu, err = createNewQemu(pClient, qemu)
 			if err != nil {
 				log.Errorf("cannot create qemu %s: %s", qemu.Metadata.Name, err)
-				if qemu.Status.Status == v1alpha1.STATUS_QEMU_ERROR {
+				if qemu.Status.Status == v1alpha1.STATUS_QEMU_EMPTY {
 					qemu = cleanQemuPlaceStatus(qemu)
 				}
 
@@ -447,13 +446,13 @@ func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, e
 func createNewQemu(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	qemuConfig, err := buildQemuConfig(pClient, qemu)
 	if err != nil {
-		qemu.Status.Status = v1alpha1.STATUS_QEMU_ERROR
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_EMPTY
 		return qemu, fmt.Errorf("cannot build qemu config: %s", err)
 	}
 
 	err = pClient.Cluster(qemu.Status.Cluster).Node(qemu.Status.Node).Qemu().Create(qemuConfig)
 	if err != nil {
-		qemu.Status.Status = v1alpha1.STATUS_QEMU_ERROR
+		qemu.Status.Status = v1alpha1.STATUS_QEMU_EMPTY
 		return qemu, fmt.Errorf("cannot create qemu: %s", err)
 	}
 
