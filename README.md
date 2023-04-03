@@ -4,9 +4,11 @@ This repository provides kuberentes operator for manage the [Proxmox virtualizat
 
 ## Getting Started
 
-
+* `git clone https://github.com/CRASH-Tech/proxmox-operator.git`
+* `cd proxmox-operator`
+* Edit charts/proxmox-operator/values.yaml for your environment
 * `helm repo add crash-tech https://crash-tech.github.io/charts/`
-* `helm install proxmox-operator crash-tech/proxmox-operator`
+* `helm install proxmox-operator crash-tech/proxmox-operator -f charts/proxmox-operator/values.yaml`
 
 ## Deploy example VM
 
