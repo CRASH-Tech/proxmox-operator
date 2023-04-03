@@ -59,13 +59,13 @@ func init() {
 
 	var restConfig *rest.Config
 	if path, isSet := os.LookupEnv("KUBECONFIG"); isSet {
-		log.Printf("using configuration from '%s'", path)
+		log.Printf("Using configuration from '%s'", path)
 		restConfig, err = clientcmd.BuildConfigFromFlags("", path)
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
-		log.Printf("using in-cluster configuration")
+		log.Printf("Using in-cluster configuration")
 		restConfig, err = rest.InClusterConfig()
 		if err != nil {
 			log.Fatal(err)
@@ -75,7 +75,7 @@ func init() {
 }
 
 func main() {
-	log.Infof("Starting proxmox-operator %s\n", version)
+	log.Infof("Starting proxmox-operator %s", version)
 
 	ctx := context.Background()
 	kClient := kuberentes.NewClient(ctx, *config.DynamicClient)
