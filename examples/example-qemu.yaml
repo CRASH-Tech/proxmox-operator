@@ -6,10 +6,10 @@ metadata:
     - resources-finalizer.proxmox-operator.xfix.org
 spec:
   cluster: pve-test
-  #node: crash-lab
-  #vmid: 222
-  pool: prod
-  anti-affinity: ""
+  #node: crash-lab ### If not set it will set automaticly from "pool"
+  #vmid: 222  ### If not set it will set automaticly
+  pool: prod ### Cluster pool for place VM
+  anti-affinity: "" ### The anti-affinity group. VM's with same anti-affinity group will be placed on different nodes
   autostart: true
   autostop: true
   cpu:
@@ -22,7 +22,7 @@ spec:
   network:
     net0:
       model: virtio
-      #mac: A2:7B:45:48:9C:E6
+      #mac: A2:7B:45:48:9C:E6  ### If not set it will set automaticly
       bridge: vmbr0
       tag: 103
   disk:
