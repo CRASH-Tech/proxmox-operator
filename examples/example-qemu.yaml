@@ -24,7 +24,7 @@ spec:
       model: virtio
       #mac: A2:7B:45:48:9C:E6  ### If not set it will set automaticly
       bridge: vmbr0
-      tag: 103
+      tag: 103 # set to 0 if tag no need
   disk:
     scsi0:
       storage: local-lvm
