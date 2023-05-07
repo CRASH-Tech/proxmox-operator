@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	version = "0.0.1"
+	version = "0.1.2"
 	config  common.Config
 )
 
@@ -499,12 +499,24 @@ func buildQemuConfig(client *proxmox.Client, qemu v1alpha1.Qemu) (proxmox.QemuCo
 	for ifaceName, iface := range qemu.Spec.Network {
 		if iface.Mac == "" {
 			if ifaceCurrentMacs[ifaceName] == "" {
-				result[ifaceName] = fmt.Sprintf("%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
+				if iface.Tag == 0 {
+					result[ifaceName] = fmt.Sprintf("%s,bridge=%s", iface.Model, iface.Bridge)
+				} else {
+					result[ifaceName] = fmt.Sprintf("%s,bridge=%s,tag=%d", iface.Model, iface.Bridge, iface.Tag)
+				}
 			} else {
-				result[ifaceName] = fmt.Sprintf("%s=%s,bridge=%s,tag=%d", iface.Model, ifaceCurrentMacs[ifaceName], iface.Bridge, iface.Tag)
+				if iface.Tag == 0 {
+					result[ifaceName] = fmt.Sprintf("%s=%s,bridge=%s", iface.Model, ifaceCurrentMacs[ifaceName], iface.Bridge)
+				} else {
+					result[ifaceName] = fmt.Sprintf("%s=%s,bridge=%s,tag=%d", iface.Model, ifaceCurrentMacs[ifaceName], iface.Bridge, iface.Tag)
+				}
 			}
 		} else {
-			result[ifaceName] = fmt.Sprintf("%s=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
+			if iface.Tag == 0 {
+				result[ifaceName] = fmt.Sprintf("%s=%s,bridge=%s", iface.Model, iface.Mac, iface.Bridge)
+			} else {
+				result[ifaceName] = fmt.Sprintf("%s=%s,bridge=%s,tag=%d", iface.Model, iface.Mac, iface.Bridge, iface.Tag)
+			}
 		}
 	}
 
