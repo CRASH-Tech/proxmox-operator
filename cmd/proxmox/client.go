@@ -85,7 +85,7 @@ func (client *Client) GetQemuPlacableCluster(request PlaceRequest) (QemuPlace, e
 
 	}
 
-	return QemuPlace{}, fmt.Errorf("cannot find avialable cluster")
+	return QemuPlace{}, fmt.Errorf("cannot find available cluster")
 }
 
 func (client *Client) GetQemuPlace(name string) (QemuPlace, error) {

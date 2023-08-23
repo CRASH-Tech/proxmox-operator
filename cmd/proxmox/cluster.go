@@ -306,7 +306,7 @@ func (cluster *Cluster) GetQemuPlacableNode(request PlaceRequest) (string, error
 	if candidateNode != "" {
 		return candidateNode, nil
 	} else {
-		return "", fmt.Errorf("cannot fin avialable node")
+		return "", fmt.Errorf("cannot find available node")
 	}
 }
 
