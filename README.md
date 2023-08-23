@@ -1,6 +1,6 @@
 # proxmox-operator
 
-This repository provides kuberentes operator for manage the [Proxmox virtualization platform](https://pve.proxmox.com/pve-docs/) QEMU VMs via CRDs
+This repository provides Kubernetes operator for manage the [Proxmox virtualization platform](https://pve.proxmox.com/pve-docs/) QEMU VMs via CRDs
 
 ## Getting Started
 

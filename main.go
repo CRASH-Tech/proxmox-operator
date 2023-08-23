@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
-	kuberentes "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes"
+	kubernetes "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api/v1alpha1"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
 	log "github.com/sirupsen/logrus"
@@ -78,7 +78,7 @@ func main() {
 	log.Infof("Starting proxmox-operator %s", version)
 
 	ctx := context.Background()
-	kClient := kuberentes.NewClient(ctx, *config.DynamicClient)
+	kClient := kubernetes.NewClient(ctx, *config.DynamicClient)
 	pClient := proxmox.NewClient(config.Clusters)
 
 	for {
@@ -104,7 +104,7 @@ func readConfig(path string) (common.Config, error) {
 	return config, err
 }
 
-func processV1aplha1(kClient *kuberentes.Client, pClient *proxmox.Client) {
+func processV1aplha1(kClient *kubernetes.Client, pClient *proxmox.Client) {
 	log.Info("Refreshing v1alpha1...")
 	qemus, err := kClient.V1alpha1().Qemu().GetAll()
 	if err != nil {
@@ -377,7 +377,7 @@ func cleanQemuPlaceStatus(qemu v1alpha1.Qemu) v1alpha1.Qemu {
 	return qemu
 }
 
-func updateQemuStatus(kClient *kuberentes.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
+func updateQemuStatus(kClient *kubernetes.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, error) {
 	name := qemu.Metadata.Name
 	qemu, err := kClient.V1alpha1().Qemu().UpdateStatus(qemu)
 	if err != nil {
