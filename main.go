@@ -423,7 +423,7 @@ func getQemuPlace(pClient *proxmox.Client, qemu v1alpha1.Qemu) (v1alpha1.Qemu, e
 	if qemu.Spec.Node == "" {
 		node, err := pClient.Cluster(qemu.Status.Cluster).GetQemuPlacableNode(placeRequest)
 		if err != nil {
-			return qemu, fmt.Errorf("cannot find avialable node: %s", err)
+			return qemu, fmt.Errorf("cannot find available node: %s", err)
 		}
 		qemu.Status.Node = node
 	} else {
