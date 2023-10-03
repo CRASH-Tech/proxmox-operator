@@ -17,15 +17,19 @@ import (
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/dynamic"
+	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
-	version = "0.1.2"
-	config  common.Config
+	version   = "0.1.2"
+	config    common.Config
+	kClient   *kubernetes.Client
+	pClient   *proxmox.Client
+	namespace string
+	hostname  string
 )
 
 func init() {
@@ -71,37 +75,42 @@ func init() {
 			log.Fatal(err)
 		}
 	}
+
 	config.DynamicClient = dynamic.NewForConfigOrDie(restConfig)
+	config.KubernetesClient = k8s.NewForConfigOrDie(restConfig)
+
+	ns, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	namespace = string(ns)
+	hostname = os.Getenv("HOSTNAME")
 }
 
 func main() {
-	log.Infof("Starting proxmox-operator %s", version)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	ctx := context.Background()
-	kClient := kubernetes.NewClient(ctx, *config.DynamicClient)
-	pClient := proxmox.NewClient(config.Clusters)
+	kClient = kubernetes.NewClient(ctx, *config.DynamicClient)
+	pClient = proxmox.NewClient(config.Clusters)
+
+	leaseLockName := "dhcp-operator"
+	leaseLockNamespace := namespace
+
+	lock := getNewLock(leaseLockName, hostname, leaseLockNamespace)
+	runLeaderElection(lock, ctx, hostname)
+
+}
+
+func worker() {
+	log.Infof("Starting proxmox-operator %s", version)
 
 	for {
 		processV1aplha1(kClient, pClient)
 
 		time.Sleep(5 * time.Second)
 	}
-}
-
-func readConfig(path string) (common.Config, error) {
-	config := common.Config{}
-	config.Clusters = make(map[string]proxmox.ClusterApiConfig)
-
-	yamlFile, err := ioutil.ReadFile(path)
-	if err != nil {
-		return common.Config{}, err
-	}
-	err = yaml.Unmarshal(yamlFile, &config)
-	if err != nil {
-		return common.Config{}, err
-	}
-
-	return config, err
 }
 
 func processV1aplha1(kClient *kubernetes.Client, pClient *proxmox.Client) {

@@ -1,0 +1,9 @@
+clusters:
+  pve-test:
+    api_token_id: root@pam!proxmox-operator
+    api_token_secret: XXX
+    api_url: https://10.171.120.253:8006/api2/json
+    pool: infra
+log:
+  format: text
+  level: info
