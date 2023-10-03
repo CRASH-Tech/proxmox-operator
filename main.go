@@ -95,7 +95,7 @@ func main() {
 	kClient = kubernetes.NewClient(ctx, *config.DynamicClient)
 	pClient = proxmox.NewClient(config.Clusters)
 
-	leaseLockName := "dhcp-operator"
+	leaseLockName := "proxmox-operator"
 	leaseLockNamespace := namespace
 
 	lock := getNewLock(leaseLockName, hostname, leaseLockNamespace)
