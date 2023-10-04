@@ -169,6 +169,10 @@ func metrics() {
 	}
 
 	for _, qemu := range qemus {
+		if qemu.Status.VmId == 0 {
+			continue
+		}
+
 		var status float64
 		if qemu.Status.Status == "SYNCED" {
 			status = 1
