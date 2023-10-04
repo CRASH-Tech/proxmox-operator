@@ -6,15 +6,20 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/CRASH-Tech/proxmox-operator/cmd/common"
 	kubernetes "github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/kubernetes/api/v1alpha1"
 	"github.com/CRASH-Tech/proxmox-operator/cmd/proxmox"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/dynamic"
@@ -24,12 +29,38 @@ import (
 )
 
 var (
-	version   = "0.1.3"
-	config    common.Config
-	kClient   *kubernetes.Client
-	pClient   *proxmox.Client
-	namespace string
-	hostname  string
+	version       = "0.1.4"
+	config        common.Config
+	kClient       *kubernetes.Client
+	pClient       *proxmox.Client
+	namespace     string
+	hostname      string
+	leaseLockName = "proxmox-operator"
+	mutex         sync.Mutex
+
+	qemuStatus = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "qemu_status",
+			Help: "The qemu status",
+		},
+		[]string{
+			"cluster",
+			"node",
+			"vmid",
+		},
+	)
+
+	qemuPower = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "qemu_power",
+			Help: "The qemu power status",
+		},
+		[]string{
+			"cluster",
+			"node",
+			"vmid",
+		},
+	)
 )
 
 func init() {
@@ -86,6 +117,9 @@ func init() {
 
 	namespace = string(ns)
 	hostname = os.Getenv("HOSTNAME")
+
+	prometheus.MustRegister(qemuStatus)
+	prometheus.MustRegister(qemuPower)
 }
 
 func main() {
@@ -95,10 +129,10 @@ func main() {
 	kClient = kubernetes.NewClient(ctx, *config.DynamicClient)
 	pClient = proxmox.NewClient(config.Clusters)
 
-	leaseLockName := "proxmox-operator"
-	leaseLockNamespace := namespace
+	mutex.Lock()
+	setLeaderLabel(false)
 
-	lock := getNewLock(leaseLockName, hostname, leaseLockNamespace)
+	lock := getNewLock(leaseLockName, hostname, namespace)
 	runLeaderElection(lock, ctx, hostname)
 
 }
@@ -106,14 +140,65 @@ func main() {
 func worker() {
 	log.Infof("Starting proxmox-operator %s", version)
 
+	listen()
+
 	for {
+		metrics()
 		processV1aplha1(kClient, pClient)
 
 		time.Sleep(5 * time.Second)
 	}
 }
 
+func listen() {
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(config.Listen, nil)
+		if err != nil {
+			log.Panic(err)
+		}
+	}()
+}
+
+func metrics() {
+	qemus, err := kClient.V1alpha1().Qemu().GetAll()
+	if err != nil {
+		log.Error(err)
+
+		return
+	}
+
+	for _, qemu := range qemus {
+		var status float64
+		if qemu.Status.Status == "SYNCED" {
+			status = 1
+		} else {
+			status = -1
+		}
+		qemuStatus.WithLabelValues(
+			qemu.Status.Cluster,
+			qemu.Status.Node,
+			strconv.Itoa(qemu.Status.VmId),
+		).Set(status)
+
+		var power float64
+		if qemu.Status.Power == "ON" {
+			power = 1
+		} else {
+			power = -1
+		}
+		qemuPower.WithLabelValues(
+			qemu.Status.Cluster,
+			qemu.Status.Node,
+			strconv.Itoa(qemu.Status.VmId),
+		).Set(power)
+	}
+}
+
 func processV1aplha1(kClient *kubernetes.Client, pClient *proxmox.Client) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	log.Info("Refreshing v1alpha1...")
 	qemus, err := kClient.V1alpha1().Qemu().GetAll()
 	if err != nil {

@@ -24,6 +24,29 @@ func getNewLock(lockname, podname, namespace string) *resourcelock.LeaseLock {
 	}
 }
 
+func setLeaderLabel(isLeader bool) {
+	pod, err := config.KubernetesClient.CoreV1().Pods(namespace).Get(context.TODO(), hostname, metav1.GetOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	existingLabels := pod.ObjectMeta.Labels
+	if isLeader {
+		existingLabels["leader"] = "true"
+	} else {
+		existingLabels["leader"] = "false"
+	}
+
+	pod.ObjectMeta.Labels = existingLabels
+
+	updatedPod, err := config.KubernetesClient.CoreV1().Pods(namespace).Update(context.TODO(), pod, metav1.UpdateOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Infof("Updated pod label: %s\n", updatedPod.Labels["leader"])
+}
+
 func runLeaderElection(lock *resourcelock.LeaseLock, ctx context.Context, id string) {
 	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 		Lock:            lock,
@@ -33,10 +56,14 @@ func runLeaderElection(lock *resourcelock.LeaseLock, ctx context.Context, id str
 		RetryPeriod:     2 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(c context.Context) {
+				mutex.Unlock()
+				setLeaderLabel(true)
 				worker()
 			},
 			OnStoppedLeading: func() {
 				log.Warn("We are no longer the leader, terminating...")
+				mutex.Lock()
+				setLeaderLabel(false)
 
 				os.Exit(0)
 			},

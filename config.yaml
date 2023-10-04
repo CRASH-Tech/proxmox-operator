@@ -1,3 +1,4 @@
+listen: :8080
 clusters:
   pve-test:
     api_token_id: root@pam!proxmox-operator

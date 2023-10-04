@@ -11,6 +11,7 @@ type Config struct {
 	Clusters         map[string]proxmox.ClusterApiConfig `yaml:"clusters"`
 	DynamicClient    *dynamic.DynamicClient
 	KubernetesClient *kubernetes.Clientset
+	Listen           string `yaml:"listen"`
 }
 
 type LogConfig struct {
