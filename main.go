@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	version       = "0.1.4"
+	version       = "0.1.5"
 	config        common.Config
 	kClient       *kubernetes.Client
 	pClient       *proxmox.Client
@@ -47,6 +47,7 @@ var (
 			"cluster",
 			"node",
 			"vmid",
+			"vmname",
 		},
 	)
 
@@ -59,6 +60,7 @@ var (
 			"cluster",
 			"node",
 			"vmid",
+			"vmname",
 		},
 	)
 )
@@ -183,6 +185,7 @@ func metrics() {
 			qemu.Status.Cluster,
 			qemu.Status.Node,
 			strconv.Itoa(qemu.Status.VmId),
+			qemu.Metadata.Name,
 		).Set(status)
 
 		var power float64
@@ -195,6 +198,7 @@ func metrics() {
 			qemu.Status.Cluster,
 			qemu.Status.Node,
 			strconv.Itoa(qemu.Status.VmId),
+			qemu.Metadata.Name,
 		).Set(power)
 	}
 }
